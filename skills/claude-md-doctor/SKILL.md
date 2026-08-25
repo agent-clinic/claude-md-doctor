@@ -39,6 +39,12 @@ Then read `WORK/intake.json` (it is small). Note for later judgment:
   unless you are examining a raw-fetched copy where symlinks flatten to text.
 - Ancestor and user-scope files are context the session loads but the repo
   can't fix — mention them, don't prescribe changes to them unless asked.
+- A file with scope `orphan-agents` means the repo has an AGENTS.md but no
+  CLAUDE.md pointing at it — **Claude Code loads nothing**. That is a critical
+  diagnosis with the official one-line fix (create a CLAUDE.md containing
+  `@AGENTS.md`), and you should still run the full static exam on the
+  AGENTS.md itself, since it becomes the patient the moment the pointer
+  exists.
 - If NO memory files exist at all, stop and report that: the prescription is
   to create one (suggest `/init` then aggressive pruning), not an empty report.
 

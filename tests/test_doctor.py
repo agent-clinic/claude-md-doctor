@@ -97,6 +97,16 @@ class TestIntake(ToyRepo):
         self.assertTrue(proj["is_pointer"])
         self.assertEqual(proj["pointer_style"], "import")
 
+    def test_orphan_agents_md_detected(self):
+        os.remove(os.path.join(self.repo, "CLAUDE.md"))
+        self._w("AGENTS.md", "# rules for all agents\nRun `pnpm build`.\n")
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        intake = jload(self.work, "intake.json")
+        orphans = [f for f in intake["files"] if f["scope"] == "orphan-agents"]
+        self.assertEqual(len(orphans), 1)
+        self.assertTrue(orphans[0]["orphaned"])
+        self.assertFalse(orphans[0]["loaded_at_launch"])
+
     def test_pointer_detection_bare_text_is_flagged_style(self):
         self._w("AGENTS.md", "# real content\n")
         self._w("CLAUDE.md", "AGENTS.md\n")  # no @ — target never loads

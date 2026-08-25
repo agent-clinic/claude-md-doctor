@@ -4,7 +4,7 @@
 
 <h1 align="center">claude-md-doctor</h1>
 
-<p align="center"><b>Give your CLAUDE.md a checkup.</b><br>
+<p align="center"><b>Give your CLAUDE.md — or AGENTS.md — a checkup.</b><br>
 Vitals, lab work, diagnoses, prescriptions — and a backtest of every rule
 against your own session history.</p>
 
@@ -69,7 +69,9 @@ It understands the real memory surface: `CLAUDE.md`, `.claude/CLAUDE.md`,
 `@imports` (depth 4, backtick-aware), `claudeMdExcludes`, ancestor
 directories — and it treats the pointer-to-`AGENTS.md` pattern as healthy,
 examining the target, while flagging the broken variant (pointer text without
-`@`, which Claude Code never actually loads).
+`@`, which Claude Code never actually loads). A repo with an AGENTS.md but no
+CLAUDE.md at all gets the doctor's simplest prescription: the official
+one-line pointer, so Claude Code stops loading nothing.
 
 ## The backtest — check if CLAUDE.md actually works in your sessions
 

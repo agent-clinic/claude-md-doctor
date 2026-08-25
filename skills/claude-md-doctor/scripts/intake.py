@@ -152,6 +152,13 @@ def main():
         if os.path.lexists(p):
             files.append(file_record(p, "project", True, repo))
 
+    # Orphaned AGENTS.md: present for other agents, but with no CLAUDE.md
+    # pointing at it, Claude Code loads nothing — a top-tier diagnosis.
+    agents = os.path.join(repo, "AGENTS.md")
+    if not files and os.path.isfile(agents):
+        files.append(file_record(agents, "orphan-agents", False, repo,
+                                 orphaned=True))
+
     # Nested (on-demand) + rules
     for dirpath, dirnames, filenames in os.walk(repo):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
