@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.3.2"
+VERSION = "0.3.3"
 
 CLASS_PILL = {"hook": "p-ok", "linter": "p-info", "test": "p-info",
               "judge": "p-warn"}
@@ -110,7 +110,7 @@ def build_patient(intake, vitals, backtest=None):
            us.get("user_rules_count", 0),
            "included in exam" if us.get("included_in_exam") else "not examined (repo scope only)")))
     sess = intake.get("sessions", {})
-    examined = ("replayed in the History section below" if backtest
+    examined = ("replayed in the Rulebook section below" if backtest
                 else "not examined in this run")
     row("Session history found", ("%d transcript(s) at <code>%s</code> — %s"
         % (sess.get("session_files", 0), esc(sess.get("dir")), examined))
@@ -136,7 +136,7 @@ def build_vitals(vitals, order):
              "official target: under %d%s" % (t["size_target_lines"],
                                               cite(["official-200"], order)),
              "bad" if over else "fine")
-    card("%s" % c["est_tokens"], "est. tokens loaded every session",
+    card("{:,}".format(c["est_tokens"]), "est. tokens loaded every session",
          "%.2f%% of a %dk context (estimate)" % (c["pct_of_context"],
                                                  t["context_budget_tokens"] // 1000),
          "warned" if c["est_tokens"] > 3000 else "fine")
@@ -240,7 +240,8 @@ def build_lab(refcheck, diagnosis, order):
 
 
 VERDICT_PILL = {"healthy": "p-ok", "ignored": "p-crit", "mixed": "p-warn",
-                "inert": "p-info", "unverified": "p-info"}
+                "inert": "p-info", "unmeasured": "p-info",
+                "unverified": "p-info"}
 
 
 TL_CLASS = {"edit": "tl-e", "bash": "tl-b", "other": "tl-o"}
@@ -325,18 +326,19 @@ def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note):
             for cls, c in sorted(counts.items(), key=lambda kv: -kv[1])) + "</div>")
     if backtest:
         w = backtest.get("window", {})
+        n_sess = w.get("sessions_replayed", 0)
         parts.append(
-            "<p class='sub'>Adherence replayed over <b>%s session(s)</b> — %s tool "
+            "<p class='sub'>Adherence replayed over <b>%s session%s</b> — %s tool "
             "calls, %s → %s (%s stubs skipped). %s.%s</p>"
-            % (w.get("sessions_replayed", 0), w.get("total_tool_calls", 0),
+            % (n_sess, "" if n_sess == 1 else "s",
+               "{:,}".format(w.get("total_tool_calls", 0)),
                esc((w.get("from") or "")[:10]), esc((w.get("to") or "")[:10]),
                w.get("stub_sessions_skipped", 0),
                esc(w.get("machine_note", "")), cite(["mcmillan", "sysbench"], order)))
 
     verdicts = (diagnosis or {}).get("rule_verdicts", {})
-    rows = ["<tr><th>Rule</th><th>Class · today</th><th>Opp</th>"
-            "<th>Compliance</th><th>Violations · causes</th>"
-            "<th>Verdict · arming</th></tr>"]
+    rows = ["<tr><th>Rule</th><th>Class · enforced today</th>"
+            "<th>History in this window</th><th>Verdict · recommendation</th></tr>"]
     depth_totals = {"early": 0, "mid": 0, "late": 0}
     ordered = [(r["id"], r) for r in rules] or [(rid, None) for rid in per_rule]
     for rid, r in ordered:
@@ -347,12 +349,35 @@ def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note):
         v = verdicts.get(rid, {})
         opp, viol = st.get("opportunities", 0), st.get("violations", 0)
         comp_n = st.get("compliances", 0)
-        decided = comp_n + viol
-        comp = ("%d%%" % round(100.0 * comp_n / decided)) if decided else "—"
+        mech = st.get("mechanized", bool(st))
         verdict = v.get("verdict") or (
+            "unmeasured" if not mech else
             "inert" if opp == 0 else "healthy" if viol == 0 else
             "ignored" if comp_n == 0 else "mixed")
+        # one cell tells the story instead of three mostly-empty number columns
+        causes = " ".join(
+            "<span class='pill %s'>%s ×%d</span>"
+            % ("p-crit" if k.startswith("defiance") else "p-warn"
+               if k == "dilution" else "p-info", esc(k.replace("-", " ")), n)
+            for k, n in sorted((st.get("causes") or {}).items()))
+        if not st:
+            history = "<span class='sub'>—</span>"
+        elif not mech:
+            history = "<span class='sub'>not yet mechanized — no matcher to replay</span>"
+        elif opp == 0:
+            history = "<span class='sub'>no matching activity</span>"
+        else:
+            bits = ["%d× applicable" % opp]
+            if viol:
+                bits.append("<b>%d violation%s</b>" % (viol, "" if viol == 1 else "s"))
+            if comp_n:
+                bits.append("%d compliant" % comp_n)
+            if viol + comp_n:
+                bits.append("(%d%% compliance)"
+                            % round(100.0 * comp_n / (viol + comp_n)))
+            history = " · ".join(bits) + (("<br>" + causes) if causes else "")
         text = (r or {}).get("text") or st.get("text", "")
+        shown = text[:90] + ("…" if len(text) > 90 else "")
         ev = ""
         samples = ((st.get("samples") or {}).get("violations", []) +
                    (st.get("samples") or {}).get("compliances", []))
@@ -363,20 +388,14 @@ def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note):
             ev = ("<details%s><summary>evidence</summary>%s</details>"
                   % (" open" if verdict == "ignored" else "", "".join(blocks)))
         cls = enf.get("class") or "unclassified"
-        causes = " ".join(
-            "<span class='pill %s'>%s ×%d</span>"
-            % ("p-crit" if k.startswith("defiance") else "p-warn"
-               if k == "dilution" else "p-info", esc(k.replace("-", " ")), n)
-            for k, n in sorted((st.get("causes") or {}).items()))
         rows.append(
             "<tr><td><span class='mono'>%s</span> %s%s</td>"
             "<td><span class='pill %s'>%s</span><br><span class='sub'>%s</span></td>"
-            "<td>%d</td><td>%s</td><td>%d%s</td>"
+            "<td>%s</td>"
             "<td><span class='pill %s'>%s</span><br><span class='sub'>%s</span></td></tr>"
-            % (esc(rid), esc(text[:90]), ev,
+            % (esc(rid), esc(shown), ev,
                CLASS_PILL.get(cls, "p-info"), esc(cls),
-               esc(enf.get("current_layer") or "prose"),
-               opp, comp, viol, (" " + causes) if causes else "",
+               esc(enf.get("current_layer") or "prose"), history,
                VERDICT_PILL.get(verdict, "p-info"), esc(verdict),
                esc(st.get("arming", "not backtested"))))
     parts.append("<div class='tablebox'><table>%s</table></div>" % "".join(rows))
