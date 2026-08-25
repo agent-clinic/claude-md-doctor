@@ -88,7 +88,13 @@ history — per rule, a verdict with receipts:
 
 Behind every number: matched excerpts, and for finish-ordering rules a
 session-timeline strip showing exactly what ran after the last edit.
-Violations are indexed by conversation depth. Matcher fires are
+Every violation is **triaged by cause** — proven defiance (the agent echoed
+the rule, then broke it), fresh-context defiance, context dilution, or
+post-compaction absence — and the cause picks the medicine: each checkable
+rule gets an **enforcement class** (hook / linter / judge) and an arming
+recommendation (reminder → warn → block), with generated **review-then-arm
+hook proposals** written to the exam folder. Nothing is ever installed
+automatically. Matcher fires are
 sample-verified before they count, because matchers have bugs; unverified
 results are banner-labeled provisional. Research shows agents silently skip
 mandated steps while outputs still pass checks; only behavioral evidence
@@ -109,8 +115,8 @@ primary-verified sources.
 
 ## Status
 
-v0.2 — the full exam works end to end: static checks + session backtest +
-verified report. Tested (`python3 -m unittest discover -s tests`), calibrated
+v0.3 — the full exam works end to end: static checks + session backtest +
+cause triage + enforcement ladder + verified report. Tested (`python3 -m unittest discover -s tests`), calibrated
 against real-world gold-standard files (`python3 fixtures/fetch.py`), and
 dogfooded on a real repo. Part of [agent-clinic](https://github.com/agent-clinic) —
 checkups for your agent's config files. Issues and PRs welcome.

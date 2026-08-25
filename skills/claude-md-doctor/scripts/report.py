@@ -18,7 +18,72 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.2.1"
+VERSION = "0.3.0"
+
+CLASS_PILL = {"hook": "p-ok", "linter": "p-info", "test": "p-info",
+              "judge": "p-warn"}
+CLASS_BAR = {"hook": "var(--accent)", "linter": "var(--info)",
+             "test": "var(--info)", "judge": "var(--warn)",
+             "unclassified": "var(--ink3)"}
+
+
+def build_enforcement(rulebook, backtest, work, order):
+    rules = (rulebook or {}).get("rules") or []
+    if not rules:
+        return ("<p class='sub'>No rulebook this run — the enforcement ladder "
+                "needs the backtest's rule decomposition.</p>")
+    per_rule = (backtest or {}).get("per_rule", {})
+    counts, lawable, already = {}, 0, 0
+    for r in rules:
+        enf = r.get("enforcement") or {}
+        cls = enf.get("class") or "unclassified"
+        counts[cls] = counts.get(cls, 0) + 1
+        cur = enf.get("current_layer") or "prose"
+        if cls in ("hook", "linter", "test"):
+            if cur == "prose":
+                lawable += 1
+            else:
+                already += 1
+    n = len(rules)
+    bar = "".join(
+        "<span class='tl-seg' style='flex:%d;background:%s' title='%d× %s'></span>"
+        % (c, CLASS_BAR.get(cls, "var(--ink3)"), c, cls)
+        for cls, c in sorted(counts.items(), key=lambda kv: -kv[1]))
+    parts = [
+        "<p class='sub'><b>%d of %d</b> checkable rules could be laws instead of "
+        "requests (%d more already are — their prose is the pointer). Prose is "
+        "advisory even when demonstrably seen; compiled checks are what change "
+        "behavior.%s</p>" % (lawable, n, already,
+                             cite(["trace", "sigil", "official-hooks"], order)),
+        "<div class='tl' style='max-width:420px'>%s</div>" % bar,
+        "<div class='tl-legend'>" + " ".join(
+            "<span class='tl-key' style='background:%s'></span>%s ×%d"
+            % (CLASS_BAR.get(cls, "var(--ink3)"), cls, c)
+            for cls, c in sorted(counts.items(), key=lambda kv: -kv[1])) + "</div>",
+    ]
+    rows = ["<tr><th>Rule</th><th>Class</th><th>Today</th><th>Causes</th>"
+            "<th>Recommended arming</th></tr>"]
+    for r in rules:
+        enf = r.get("enforcement") or {}
+        st = per_rule.get(r["id"], {})
+        causes = ", ".join("%s ×%d" % (k.replace("-", " "), v)
+                           for k, v in sorted((st.get("causes") or {}).items())) or "—"
+        cls = enf.get("class") or "unclassified"
+        rows.append(
+            "<tr><td><span class='mono'>%s</span> %s</td>"
+            "<td><span class='pill %s'>%s</span></td><td>%s</td><td>%s</td>"
+            "<td class='sub'>%s</td></tr>"
+            % (esc(r["id"]), esc(r.get("text", "")[:70]),
+               CLASS_PILL.get(cls, "p-info"), esc(cls),
+               esc(enf.get("current_layer") or "prose"), esc(causes),
+               esc(st.get("arming", "run the backtest to get a recommendation"))))
+    parts.append("<div style='height:10px'></div><div class='tablebox'><table>%s"
+                 "</table></div>" % "".join(rows))
+    if os.path.isdir(os.path.join(work, "enforcement")):
+        parts.append("<p class='sub'>Generated proposals (review before arming): "
+                     "<code>%s</code></p>"
+                     % esc(os.path.join(work, "enforcement", "PROPOSALS.md")))
+    return "\n".join(parts)
 
 HEART_RECTS = ('<rect x="2" y="0" width="4" height="2"/><rect x="8" y="0" width="4" height="2"/>'
                '<rect x="0" y="2" width="14" height="4"/><rect x="2" y="6" width="10" height="2"/>'
@@ -404,6 +469,7 @@ def main():
                             "..", "templates", "report.html")
     tpl = open(tpl_path, encoding="utf-8").read()
     backtest = load_json(os.path.join(work, "backtest.json"))
+    rulebook = load_json(os.path.join(work, "rulebook.json"))
     grade = (diagnosis or {}).get("grade", "—")
     history_fallback = (diagnosis or {}).get("history_note") or (
         "Not examined in this run. %d session transcript(s) were located for "
@@ -428,6 +494,7 @@ def main():
         "{{LAB_HTML}}": build_lab(refcheck, diagnosis, order),
         "{{HISTORY_HTML}}": build_history(backtest, diagnosis, order,
                                           history_fallback),
+        "{{ENFORCEMENT_HTML}}": build_enforcement(rulebook, backtest, work, order),
         "{{DIAGNOSES_HTML}}": build_diagnoses(diagnosis, order),
         "{{PRESCRIPTIONS_HTML}}": build_prescriptions(diagnosis, order),
         "{{FOLLOWUP_HTML}}": "<ul class='rxlist'>%s</ul>" % (

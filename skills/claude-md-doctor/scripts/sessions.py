@@ -30,16 +30,25 @@ def _head(s, cap):
 
 
 def condense_file(path):
-    """One transcript -> (events, meta). Never raises on bad lines."""
+    """One transcript -> (events, meta). Never raises on bad lines.
+
+    Every event carries `off`, its byte offset in the raw transcript — a
+    context-occupancy proxy (tool_result bytes count toward context even
+    though their bodies are dropped here). Compaction boundaries (`system`
+    records with compactMetadata, or user records with isCompactSummary)
+    are emitted as {"t": "compact"} events so the backtest can bucket
+    violations by context state (fresh / diluted / post-compact)."""
     events, turns, first_ts, last_ts = [], 0, None, None
+    offset = 0
     try:
-        fh = open(path, "r", encoding="utf-8", errors="replace")
+        fh = open(path, "rb")
     except OSError:
         return [], {}
     with fh:
-        for line in fh:
+        for raw in fh:
+            line_off, offset = offset, offset + len(raw)
             try:
-                rec = json.loads(line)
+                rec = json.loads(raw.decode("utf-8", "replace"))
             except ValueError:
                 continue
             if not isinstance(rec, dict):
@@ -48,8 +57,14 @@ def condense_file(path):
             if ts:
                 first_ts, last_ts = first_ts or ts, ts
             rtype = rec.get("type")
+            if (rtype == "system" and "compactMetadata" in rec) or \
+                    (rtype == "user" and rec.get("isCompactSummary")):
+                events.append({"t": "compact", "turn": turns, "ts": ts,
+                               "off": line_off})
+                continue
             msg = rec.get("message") or {}
             content = msg.get("content")
+            n_before = len(events)
             if rtype == "user":
                 if isinstance(content, str):
                     turns += 1
@@ -95,7 +110,11 @@ def condense_file(path):
                         events.append(ev)
             # every other record type (attachment, permission-mode, ai-title,
             # file-history-snapshot, system, …) is a sidecar: skipped
-    return events, {"turns": turns, "first_ts": first_ts, "last_ts": last_ts}
+            for ev in events[n_before:]:
+                ev.setdefault("off", line_off)
+    return events, {"turns": turns, "first_ts": first_ts, "last_ts": last_ts,
+                    "total_bytes": offset,
+                    "compactions": len([e for e in events if e["t"] == "compact"])}
 
 
 def main():

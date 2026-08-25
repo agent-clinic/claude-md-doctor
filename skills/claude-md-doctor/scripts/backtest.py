@@ -19,9 +19,30 @@ pattern itself opts out):
     "matchers": {"violation": "…", "compliance": "…", "context": "…"},
     "ordering": {"require": "regex on bash commands",
                  "desc": "run pnpm verify before finishing",
-                 "min_mutations": 1}                 # ordering rules need no matchers
+                 "min_mutations": 1},                # ordering rules need no matchers
+    "origin": "root",                                # root|nested|rules|conversation —
+                                                     # only non-root rules can be truly
+                                                     # absent post-compact
+    "enforcement": {                                 # v0.3 classification (model-authored)
+      "class": "hook",                               # hook|linter|test|judge
+      "subtype": "bash-gate",                        # e.g. bash-gate|edit-gate|stop-gate|
+                                                     #      tool-input-gate|output-gate
+      "scope_kind": "file",                          # file|project (linter class)
+      "current_layer": "prose",                      # prose, or the existing enforcement
+                                                     # (hook|linter|test|ci) the prose points at
+      "mechanism": "PreToolUse Bash regex",          # named mechanism for the prescription
+      "echo_regex": "pnpm verify|No exceptions"      # distinctive tokens: an assistant-text
+    }                                                # match BEFORE a violation = proven defiance
   }]
 }
+
+Each violation is triaged by context state into a cause —
+defiance-proven (rule echoed in the agent's own words, then violated) >
+defiance (fresh context) > dilution (late turn / heavy context) >
+absence-risk (non-root rule after a compaction boundary) — and each rule gets
+an arming recommendation (reminder → warn-hook → block) derived from its
+cause mix. Occupancy is proxied by raw-transcript byte offsets; compaction
+boundaries come from the transcript's own markers.
 
 Usage: python3 backtest.py --work DIR
 Reads:  <work>/rulebook.json, <work>/sessions/*.json
@@ -39,6 +60,65 @@ from _common import load_json, manifest_add, save_json
 
 SAMPLE_V, SAMPLE_C = 6, 3
 EDIT_NAMES = {"Edit", "MultiEdit", "NotebookEdit"}
+DILUTION_TURN = 9          # violations past this turn lean dilution (SysBench/McMillan)
+DILUTION_BYTES = 400_000   # raw-transcript bytes since last compaction ≈ heavy context
+
+
+class SessionContext(object):
+    """Per-session context-state features for cause triage."""
+
+    def __init__(self, events):
+        self.compact_offs = [e.get("off", 0) for e in events if e["t"] == "compact"]
+        self.assistant_texts = [(i, e.get("text", "")) for i, e in enumerate(events)
+                                if e["t"] == "assistant"]
+
+    def epoch_start(self, off):
+        prior = [c for c in self.compact_offs if c <= off]
+        return max(prior) if prior else 0
+
+    def post_compact(self, off):
+        return any(c <= off for c in self.compact_offs)
+
+    def echoed_before(self, rx, idx):
+        return bool(rx) and any(rx.search(t) for i, t in self.assistant_texts
+                                if i < idx and t)
+
+
+def cause_of(rule, rx_echo, ev, idx, ctx):
+    off = ev.get("off", 0)
+    if ctx.echoed_before(rx_echo, idx):
+        return "defiance-proven"
+    if rule.get("origin", "root") != "root" and ctx.post_compact(off):
+        return "absence-risk"
+    if ev.get("turn", 0) > DILUTION_TURN or \
+            (off - ctx.epoch_start(off)) > DILUTION_BYTES:
+        return "dilution"
+    return "defiance"
+
+
+def recommend_arming(st, enf):
+    cls = (enf or {}).get("class")
+    cur = (enf or {}).get("current_layer") or "prose"
+    if cur != "prose":
+        return "already enforced (%s) — prose is the pointer; verify it still runs" % cur
+    if cls == "judge":
+        return "judge-class: stays prose; audited by backtest, reliability ceiling applies"
+    if cls not in ("hook", "linter", "test"):
+        return "unclassified — classify before arming"
+    v, c = st["violations"], st["causes"]
+    if v == 0:
+        return ("healthy in window — enforcement optional" if st["compliances"]
+                else "inert in window — no arming evidence either way")
+    if c.get("defiance-proven"):
+        return "BLOCK-ready: rule was echoed then violated — the reminder already happened and lost"
+    half = max(1, v / 2.0)
+    if c.get("defiance", 0) >= half:
+        return "arm warn-mode now; graduate to block after a clean warn period"
+    if c.get("dilution", 0) >= half:
+        return "soft first: slim the file / path-scope to point of use / PostToolUse nudge"
+    if c.get("absence-risk", 0) >= half:
+        return "re-inject: SessionStart or PreCompact hook, or a path-scoped rule"
+    return "mixed causes — warn-mode hook and re-triage next run"
 
 
 def event_kind(ev):
@@ -159,13 +239,23 @@ def main():
             "opportunities": 0, "violations": 0, "compliances": 0,
             "pre_rule_sessions": 0, "sessions_with_activity": 0,
             "violations_by_depth": {"early": 0, "mid": 0, "late": 0},
+            "causes": {}, "enforcement": rule.get("enforcement"),
+            "origin": rule.get("origin", "root"),
             "samples": {"violations": [], "compliances": []},
         }
 
     for sess in sessions:
         events = load_json(os.path.join(sess_dir, sess["id"] + ".json")) or []
+        ctx = SessionContext(events)
         for rule in rulebook["rules"]:
             st = stats[rule["id"]]
+            echo_pat = (rule.get("enforcement") or {}).get("echo_regex")
+            rx_echo = re.compile(echo_pat) if echo_pat else None
+
+            def tally_cause(ev, idx):
+                cause = cause_of(rule, rx_echo, ev, idx, ctx)
+                st["causes"][cause] = st["causes"].get(cause, 0) + 1
+                return cause
             pre_rule = bool(rule.get("introduced")) and \
                 bool(sess.get("last_ts")) and sess["last_ts"] < rule["introduced"]
             if pre_rule:
@@ -208,10 +298,14 @@ def main():
                     else:
                         st["violations"] += 1
                         st["violations_by_depth"]["late"] += 1
+                        # cause is judged where the obligation ripened — the
+                        # last mutation — not at session end
+                        ripen = last_mut if last_mut >= 0 else len(events) - 1
+                        cause = tally_cause(events[ripen], len(events) - 1)
                         if len(st["samples"]["violations"]) < SAMPLE_V:
                             st["samples"]["violations"].append(
                                 {"session": sess["id"], "turn": events[-1].get("turn", 0),
-                                 "viz": viz,
+                                 "viz": viz, "cause": cause,
                                  "note": "session ended after %d file edits without: %s"
                                          % (mutations, o.get("desc", o["require"]))})
             else:
@@ -229,10 +323,11 @@ def main():
                     if vm and not cm:
                         st["violations"] += 1
                         st["violations_by_depth"][depth_bucket(ev.get("turn", 0))] += 1
+                        cause = tally_cause(ev, i)
                         if len(st["samples"]["violations"]) < SAMPLE_V:
                             st["samples"]["violations"].append(
                                 {"session": sess["id"], "turn": ev.get("turn", 0),
-                                 "event": event_kind(ev),
+                                 "event": event_kind(ev), "cause": cause,
                                  "file": ev.get("file_path"),
                                  "excerpt": excerpt(text, vm)})
                     elif cm:
@@ -243,6 +338,9 @@ def main():
                                  "excerpt": excerpt(text, cm)})
             if active:
                 st["sessions_with_activity"] += 1
+
+    for rid, st in stats.items():
+        st["arming"] = recommend_arming(st, st["enforcement"])
 
     out = {
         "window": {

@@ -184,6 +184,79 @@ class TestBacktest(ToyRepo):
         self.assertEqual(viz["edits"], 1)
         self.assertEqual(viz["after_cmds"], [["pnpm", 1]])
         self.assertTrue(any(s["after"] for s in viz["segments"]))
+        self.assertIn("cause", bt["V1"]["samples"]["violations"][0])
+        self.assertIn("arming", bt["V1"])
+
+    def test_cause_triage_and_compile(self):
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        sdir = os.path.join(self.work, "sessions")
+        os.makedirs(sdir)
+        repo = os.path.realpath(self.repo)
+        events = [
+            # early violation, fresh context -> defiance
+            {"t": "tool", "name": "Edit", "turn": 2, "off": 1000,
+             "file_path": os.path.join(repo, "a.ts"), "new": "evil()"},
+            # the agent echoes the rule, then violates again -> defiance-proven
+            {"t": "assistant", "turn": 3, "off": 2000,
+             "text": "I must never call evil() per the rules."},
+            {"t": "tool", "name": "Edit", "turn": 4, "off": 3000,
+             "file_path": os.path.join(repo, "b.ts"), "new": "evil()"},
+            # compaction, then a nested-origin rule violation -> absence-risk
+            {"t": "compact", "turn": 5, "off": 4000},
+            {"t": "tool", "name": "Edit", "turn": 6, "off": 5000,
+             "file_path": os.path.join(repo, "c.ts"), "new": "spooky()"},
+            # very late turn -> dilution
+            {"t": "tool", "name": "Edit", "turn": 20, "off": 6000,
+             "file_path": os.path.join(repo, "d.ts"), "new": "chaotic()"},
+        ]
+        with open(os.path.join(sdir, "s1.json"), "w") as f:
+            json.dump(events, f)
+        with open(os.path.join(self.work, "sessions_index.json"), "w") as f:
+            json.dump({"sessions": [{"id": "s1", "events": len(events),
+                                     "tools": 4,
+                                     "last_ts": "2026-08-01T00:02:00Z"}]}, f)
+        with open(os.path.join(self.work, "rulebook.json"), "w") as f:
+            json.dump({"rules": [
+                {"id": "E1", "text": "never call evil", "origin": "root",
+                 "scope": {"events": ["edit", "write"]},
+                 "matchers": {"violation": "evil\\("},
+                 "enforcement": {"class": "hook", "current_layer": "prose",
+                                 "echo_regex": "never call evil"}},
+                {"id": "A1", "text": "never call spooky", "origin": "rules",
+                 "scope": {"events": ["edit", "write"]},
+                 "matchers": {"violation": "spooky\\("},
+                 "enforcement": {"class": "hook", "current_layer": "prose"}},
+                {"id": "D1", "text": "never call chaotic", "origin": "root",
+                 "scope": {"events": ["edit", "write"]},
+                 "matchers": {"violation": "chaotic\\("},
+                 "enforcement": {"class": "hook", "current_layer": "prose"}},
+                {"id": "L1", "text": "already a law", "origin": "root",
+                 "scope": {"events": ["edit", "write"]},
+                 "matchers": {"violation": "nope\\("},
+                 "enforcement": {"class": "linter", "current_layer": "test"}},
+            ]}, f)
+        run("backtest.py", "--work", self.work)
+        bt = jload(self.work, "backtest.json")["per_rule"]
+        self.assertEqual(bt["E1"]["causes"].get("defiance"), 1)
+        self.assertEqual(bt["E1"]["causes"].get("defiance-proven"), 1)
+        self.assertIn("BLOCK-ready", bt["E1"]["arming"])
+        self.assertEqual(bt["A1"]["causes"], {"absence-risk": 1})
+        self.assertIn("re-inject", bt["A1"]["arming"])
+        self.assertEqual(bt["D1"]["causes"], {"dilution": 1})
+        self.assertIn("soft first", bt["D1"]["arming"])
+        self.assertIn("already enforced", bt["L1"]["arming"])
+        run("compile.py", "--work", self.work)
+        enf_dir = os.path.join(self.work, "enforcement")
+        cfg = jload(enf_dir, "rules-guard.json")
+        ids = {r["id"]: r for r in cfg["rules"]}
+        self.assertIn("E1", ids)
+        self.assertEqual(ids["E1"]["mode"], "block")   # defiance-proven -> block
+        self.assertEqual(ids["D1"]["mode"], "warn")
+        self.assertNotIn("L1", ids)                     # already enforced -> no guard
+        with open(os.path.join(enf_dir, "PROPOSALS.md")) as f:
+            proposals = f.read()
+        self.assertIn("REVIEW BEFORE ARMING", proposals)
+        self.assertIn("BLOCK-ready", proposals)
 
 
 class TestReport(ToyRepo):

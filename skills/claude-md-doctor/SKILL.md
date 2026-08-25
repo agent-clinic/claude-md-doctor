@@ -116,6 +116,21 @@ Guidance:
   `git log --follow --format=%aI -- <file>` when the file's history makes
   that cheap — sessions that ended before a rule existed must not count
   against adherence.
+- **Classify every rule's enforcement** (the `enforcement` block — schema at
+  the top of `backtest.py`). Split compound rules into clauses first; each
+  clause classifies independently. The class is the cheapest reliable
+  detector: `hook` (event-stream regex: bash/edit/path/tool-input/output
+  gates, ordering, cadence — try the event-ordering and standing-invariant
+  reframings BEFORE surrendering a rule to judge), `linter`/`test` (static
+  analysis over artifacts: lint rules, discipline tests, import-graph
+  boundaries — record `scope_kind: file|project`), or `judge` (only an LLM
+  can score it). A rule even a judge couldn't score is not a rule — diagnose
+  it `vague`. Detect **existing enforcement**: if the repo already has the
+  test/lint/hook the prose describes, set `current_layer` to it — that rule
+  is a healthy pointer, never a prescription target. Give every classified
+  rule an `echo_regex` of its distinctive tokens (for proven-defiance
+  detection) and an `origin` (root/nested/rules — only non-root rules can be
+  truly absent after compaction).
 
 ### 4c — run the engine
 
@@ -139,6 +154,30 @@ Then record per-rule verdicts in `diagnosis.json` under `rule_verdicts`:
 
 `inert` (zero opportunities in the window) is a finding, not a failure —
 say what it means: the rule cost context in every session and never came up.
+
+The engine also triages every violation by **cause**: `defiance-proven` (the
+agent echoed the rule in its own text, then violated it — the reminder
+already happened and lost), `defiance` (fresh context), `dilution` (late
+turn / heavy context), `absence-risk` (non-root rule after a compaction
+boundary). Read the causes before judging: they pick the medicine — proven
+defiance justifies block-mode; dilution calls for slimming/path-scoping, not
+cages; absence calls for re-injection hooks. Sanity-check the buckets while
+sample-verifying (a "dilution" tag on a turn-2 violation means the occupancy
+proxy misfired — say so). Ordering-rule caveat: verdicts are per-transcript —
+in subagent/worktree workflows the required command may have run in a sibling
+transcript. A conversation message *claiming* it ran ("verify green") is not
+proof; note the claim in your verdict and check whether repo edits happened
+after it (the obligation re-ripens).
+
+### 4e — compile enforcement proposals
+
+    python3 SCRIPTS/compile.py --work WORK
+
+This writes `WORK/enforcement/` — a PROPOSALS.md dossier per rule, a generic
+guard script, its per-rule config (warn-mode by default; defiance-proven
+rules start at block), and a settings snippet. **Never install any of it
+yourself; never edit the user's `.claude/settings.json`.** Tell the user
+where the proposals live and that they are review-then-arm.
 
 ## Stage 5 — diagnosis (your judgment, written to a file)
 
