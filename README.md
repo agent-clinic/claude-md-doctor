@@ -63,7 +63,15 @@ As a plugin (recommended):
 
 then install `claude-md-doctor` from the `/plugin` menu.
 
+Or via the [skills.sh](https://skills.sh) CLI:
+
+```
+npx skills add tx871217/claude-md-doctor
+```
+
 Or bare: copy `skills/claude-md-doctor/` into `~/.claude/skills/`.
+(The static exam is agent-agnostic markdown-and-Python; the backtest reads
+Claude Code's transcript format, so the full exam is built for Claude Code.)
 
 Requires Python 3.9+ (standard library only — nothing to install).
 
