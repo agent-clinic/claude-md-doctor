@@ -185,6 +185,13 @@ Rules for this stage:
   CLAUDE.md with a healthy target grades on the target.
 - Cannot-fix scopes (ancestor/user/managed files) may generate `info`
   diagnoses only.
+- **Pointer repos are usually cross-agent repos.** When the patient is an
+  AGENTS.md reached via a pointer, it likely serves Cursor/Codex/Copilot too —
+  prescriptions that relocate content into Claude-only surfaces
+  (`.claude/rules/`, skills, hooks) hide it from those agents. Still prescribe
+  them when right, but state the trade-off in the prescription ("Claude-only;
+  other agents reading AGENTS.md will lose this") and prefer in-file fixes for
+  content every agent needs.
 
 ## Stage 5 — report
 
