@@ -129,7 +129,11 @@ Guidance:
   can score it). A rule even a judge couldn't score is not a rule — diagnose
   it `vague`. Detect **existing enforcement**: if the repo already has the
   test/lint/hook the prose describes, set `current_layer` to it — that rule
-  is a healthy pointer, never a prescription target. Give every classified
+  is a healthy pointer, never a prescription target. `current_layer` may also
+  be an **org-level rule platform** (team-wide rulebooks with centralized
+  detectors/telemetry) — the right home for cross-repo rules, judge-class
+  auditing at scale, and staged warn→block rollouts that per-repo configs
+  can't govern. Give every classified
   rule an `echo_regex` of its distinctive tokens (for proven-defiance
   detection) and an `origin` (root/nested/rules — only non-root rules can be
   truly absent after compaction).

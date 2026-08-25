@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.3.0"
+VERSION = "0.3.2"
 
 CLASS_PILL = {"hook": "p-ok", "linter": "p-info", "test": "p-info",
               "judge": "p-warn"}
@@ -26,64 +26,6 @@ CLASS_BAR = {"hook": "var(--accent)", "linter": "var(--info)",
              "test": "var(--info)", "judge": "var(--warn)",
              "unclassified": "var(--ink3)"}
 
-
-def build_enforcement(rulebook, backtest, work, order):
-    rules = (rulebook or {}).get("rules") or []
-    if not rules:
-        return ("<p class='sub'>No rulebook this run — the enforcement ladder "
-                "needs the backtest's rule decomposition.</p>")
-    per_rule = (backtest or {}).get("per_rule", {})
-    counts, lawable, already = {}, 0, 0
-    for r in rules:
-        enf = r.get("enforcement") or {}
-        cls = enf.get("class") or "unclassified"
-        counts[cls] = counts.get(cls, 0) + 1
-        cur = enf.get("current_layer") or "prose"
-        if cls in ("hook", "linter", "test"):
-            if cur == "prose":
-                lawable += 1
-            else:
-                already += 1
-    n = len(rules)
-    bar = "".join(
-        "<span class='tl-seg' style='flex:%d;background:%s' title='%d× %s'></span>"
-        % (c, CLASS_BAR.get(cls, "var(--ink3)"), c, cls)
-        for cls, c in sorted(counts.items(), key=lambda kv: -kv[1]))
-    parts = [
-        "<p class='sub'><b>%d of %d</b> checkable rules could be laws instead of "
-        "requests (%d more already are — their prose is the pointer). Prose is "
-        "advisory even when demonstrably seen; compiled checks are what change "
-        "behavior.%s</p>" % (lawable, n, already,
-                             cite(["trace", "sigil", "official-hooks"], order)),
-        "<div class='tl' style='max-width:420px'>%s</div>" % bar,
-        "<div class='tl-legend'>" + " ".join(
-            "<span class='tl-key' style='background:%s'></span>%s ×%d"
-            % (CLASS_BAR.get(cls, "var(--ink3)"), cls, c)
-            for cls, c in sorted(counts.items(), key=lambda kv: -kv[1])) + "</div>",
-    ]
-    rows = ["<tr><th>Rule</th><th>Class</th><th>Today</th><th>Causes</th>"
-            "<th>Recommended arming</th></tr>"]
-    for r in rules:
-        enf = r.get("enforcement") or {}
-        st = per_rule.get(r["id"], {})
-        causes = ", ".join("%s ×%d" % (k.replace("-", " "), v)
-                           for k, v in sorted((st.get("causes") or {}).items())) or "—"
-        cls = enf.get("class") or "unclassified"
-        rows.append(
-            "<tr><td><span class='mono'>%s</span> %s</td>"
-            "<td><span class='pill %s'>%s</span></td><td>%s</td><td>%s</td>"
-            "<td class='sub'>%s</td></tr>"
-            % (esc(r["id"]), esc(r.get("text", "")[:70]),
-               CLASS_PILL.get(cls, "p-info"), esc(cls),
-               esc(enf.get("current_layer") or "prose"), esc(causes),
-               esc(st.get("arming", "run the backtest to get a recommendation"))))
-    parts.append("<div style='height:10px'></div><div class='tablebox'><table>%s"
-                 "</table></div>" % "".join(rows))
-    if os.path.isdir(os.path.join(work, "enforcement")):
-        parts.append("<p class='sub'>Generated proposals (review before arming): "
-                     "<code>%s</code></p>"
-                     % esc(os.path.join(work, "enforcement", "PROPOSALS.md")))
-    return "\n".join(parts)
 
 HEART_RECTS = ('<rect x="2" y="0" width="4" height="2"/><rect x="8" y="0" width="4" height="2"/>'
                '<rect x="0" y="2" width="14" height="4"/><rect x="2" y="6" width="10" height="2"/>'
@@ -342,51 +284,101 @@ def render_sample(s):
                esc(after), verdict_mark))
 
 
-def build_history(backtest, diagnosis, order, fallback_note):
-    if not backtest:
+def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note):
+    """One merged section: enforcement classification + adherence history +
+    cause triage + arming, one row per rule."""
+    rules = (rulebook or {}).get("rules") or []
+    per_rule = (backtest or {}).get("per_rule") or {}
+    if not rules and not per_rule:
         return "<p class='sub'>%s</p>" % esc(fallback_note)
-    w = backtest.get("window", {})
     parts = []
-    if not backtest.get("verified"):
+    if backtest and not backtest.get("verified"):
         parts.append("<div class='note'>Backtest ran but its samples were not "
                      "verified — matcher results below are provisional.</div>")
-    parts.append(
-        "<p class='sub'>Replayed every rule over <b>%s session(s)</b> — %s tool "
-        "calls, %s → %s (%s stub sessions skipped). %s.%s</p>"
-        % (w.get("sessions_replayed", 0), w.get("total_tool_calls", 0),
-           esc((w.get("from") or "")[:10]), esc((w.get("to") or "")[:10]),
-           w.get("stub_sessions_skipped", 0),
-           esc(w.get("machine_note", "")), cite(["mcmillan", "sysbench"], order)))
+
+    # header stat + class distribution bar
+    counts, lawable, already = {}, 0, 0
+    for r in rules:
+        enf = r.get("enforcement") or {}
+        cls = enf.get("class") or "unclassified"
+        counts[cls] = counts.get(cls, 0) + 1
+        if cls in ("hook", "linter", "test"):
+            if (enf.get("current_layer") or "prose") == "prose":
+                lawable += 1
+            else:
+                already += 1
+    if rules:
+        bar = "".join(
+            "<span class='tl-seg' style='flex:%d;background:%s' title='%d× %s'></span>"
+            % (c, CLASS_BAR.get(cls, "var(--ink3)"), c, cls)
+            for cls, c in sorted(counts.items(), key=lambda kv: -kv[1]))
+        parts.append(
+            "<p class='sub'><b>%d of %d</b> directives could be laws instead of "
+            "requests (%d more already are — their prose is the pointer). Prose is "
+            "advisory even when demonstrably seen; compiled checks are what change "
+            "behavior.%s</p>" % (lawable, len(rules), already,
+                                 cite(["trace", "sigil", "official-hooks"], order)))
+        parts.append("<div class='tl' style='max-width:420px'>%s</div>" % bar)
+        parts.append("<div class='tl-legend'>" + " ".join(
+            "<span class='tl-key' style='background:%s'></span>%s ×%d"
+            % (CLASS_BAR.get(cls, "var(--ink3)"), cls, c)
+            for cls, c in sorted(counts.items(), key=lambda kv: -kv[1])) + "</div>")
+    if backtest:
+        w = backtest.get("window", {})
+        parts.append(
+            "<p class='sub'>Adherence replayed over <b>%s session(s)</b> — %s tool "
+            "calls, %s → %s (%s stubs skipped). %s.%s</p>"
+            % (w.get("sessions_replayed", 0), w.get("total_tool_calls", 0),
+               esc((w.get("from") or "")[:10]), esc((w.get("to") or "")[:10]),
+               w.get("stub_sessions_skipped", 0),
+               esc(w.get("machine_note", "")), cite(["mcmillan", "sysbench"], order)))
+
     verdicts = (diagnosis or {}).get("rule_verdicts", {})
-    rows = ["<tr><th>Rule</th><th>Opportunities</th><th>Compliance</th>"
-            "<th>Violations</th><th>Verdict</th></tr>"]
+    rows = ["<tr><th>Rule</th><th>Class · today</th><th>Opp</th>"
+            "<th>Compliance</th><th>Violations · causes</th>"
+            "<th>Verdict · arming</th></tr>"]
     depth_totals = {"early": 0, "mid": 0, "late": 0}
-    for rid, st in (backtest.get("per_rule") or {}).items():
+    ordered = [(r["id"], r) for r in rules] or [(rid, None) for rid in per_rule]
+    for rid, r in ordered:
+        st = per_rule.get(rid) or {}
+        enf = ((r or {}).get("enforcement") or st.get("enforcement") or {})
         for k in depth_totals:
-            depth_totals[k] += st["violations_by_depth"].get(k, 0)
+            depth_totals[k] += (st.get("violations_by_depth") or {}).get(k, 0)
         v = verdicts.get(rid, {})
+        opp, viol = st.get("opportunities", 0), st.get("violations", 0)
+        comp_n = st.get("compliances", 0)
+        decided = comp_n + viol
+        comp = ("%d%%" % round(100.0 * comp_n / decided)) if decided else "—"
         verdict = v.get("verdict") or (
-            "inert" if st["opportunities"] == 0 else
-            "healthy" if st["violations"] == 0 else
-            "ignored" if st["compliances"] == 0 else "mixed")
-        decided = st["compliances"] + st["violations"]
-        comp = ("%d%%" % round(100.0 * st["compliances"] / decided)) if decided else "—"
+            "inert" if opp == 0 else "healthy" if viol == 0 else
+            "ignored" if comp_n == 0 else "mixed")
+        text = (r or {}).get("text") or st.get("text", "")
         ev = ""
-        samples = st["samples"]["violations"] + st["samples"]["compliances"]
+        samples = ((st.get("samples") or {}).get("violations", []) +
+                   (st.get("samples") or {}).get("compliances", []))
         if samples or v.get("note"):
-            blocks = []
-            if v.get("note"):
-                blocks.append("<div class='tl-sum'>%s</div>" % esc(v["note"]))
-            for s in samples:
-                blocks.append(render_sample(s))
+            blocks = ([("<div class='tl-sum'>%s</div>" % esc(v["note"]))]
+                      if v.get("note") else [])
+            blocks += [render_sample(s) for s in samples]
             ev = ("<details%s><summary>evidence</summary>%s</details>"
                   % (" open" if verdict == "ignored" else "", "".join(blocks)))
+        cls = enf.get("class") or "unclassified"
+        causes = " ".join(
+            "<span class='pill %s'>%s ×%d</span>"
+            % ("p-crit" if k.startswith("defiance") else "p-warn"
+               if k == "dilution" else "p-info", esc(k.replace("-", " ")), n)
+            for k, n in sorted((st.get("causes") or {}).items()))
         rows.append(
-            "<tr><td><span class='mono'>%s</span> %s%s</td><td>%d</td><td>%s</td>"
-            "<td>%d</td><td><span class='pill %s'>%s</span></td></tr>"
-            % (esc(rid), esc(st["text"][:90]), ev, st["opportunities"], comp,
-               st["violations"], VERDICT_PILL.get(verdict, "p-info"),
-               esc(verdict)))
+            "<tr><td><span class='mono'>%s</span> %s%s</td>"
+            "<td><span class='pill %s'>%s</span><br><span class='sub'>%s</span></td>"
+            "<td>%d</td><td>%s</td><td>%d%s</td>"
+            "<td><span class='pill %s'>%s</span><br><span class='sub'>%s</span></td></tr>"
+            % (esc(rid), esc(text[:90]), ev,
+               CLASS_PILL.get(cls, "p-info"), esc(cls),
+               esc(enf.get("current_layer") or "prose"),
+               opp, comp, viol, (" " + causes) if causes else "",
+               VERDICT_PILL.get(verdict, "p-info"), esc(verdict),
+               esc(st.get("arming", "not backtested"))))
     parts.append("<div class='tablebox'><table>%s</table></div>" % "".join(rows))
     total_v = sum(depth_totals.values())
     if total_v:
@@ -394,6 +386,10 @@ def build_history(backtest, diagnosis, order, fallback_note):
                      "%d early (≤3 turns) · %d mid (4–8) · %d late (>8)%s.</p>"
                      % (depth_totals["early"], depth_totals["mid"],
                         depth_totals["late"], cite(["sysbench"], order)))
+    if os.path.isdir(os.path.join(work, "enforcement")):
+        parts.append("<p class='sub'>Generated proposals (review before arming): "
+                     "<code>%s</code></p>"
+                     % esc(os.path.join(work, "enforcement", "PROPOSALS.md")))
     return "\n".join(parts)
 
 
@@ -492,9 +488,8 @@ def main():
         "{{VITALS_CARDS}}": build_vitals(vitals, order),
         "{{FILES_TABLE}}": build_files_table(vitals),
         "{{LAB_HTML}}": build_lab(refcheck, diagnosis, order),
-        "{{HISTORY_HTML}}": build_history(backtest, diagnosis, order,
-                                          history_fallback),
-        "{{ENFORCEMENT_HTML}}": build_enforcement(rulebook, backtest, work, order),
+        "{{RULEBOOK_HTML}}": build_rulebook(rulebook, backtest, diagnosis,
+                                            work, order, history_fallback),
         "{{DIAGNOSES_HTML}}": build_diagnoses(diagnosis, order),
         "{{PRESCRIPTIONS_HTML}}": build_prescriptions(diagnosis, order),
         "{{FOLLOWUP_HTML}}": "<ul class='rxlist'>%s</ul>" % (
