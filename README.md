@@ -46,10 +46,8 @@ results are banner-labeled provisional. Research shows agents silently skip
 mandated steps while outputs still pass checks; only behavioral evidence
 catches that — and it's free, sitting in your transcript history.
 
-First dogfood result, on this project's own test patient: the file's loudest
-rule ("run verify before you finish. **No exceptions.**") was the one rule
-real sessions broke — 0% compliance where it applied — while 6 of 8
-mechanically-checkable rules never came up at all in a month of history.
+Run it on your own repo: the rules you'd bet on being followed are rarely the
+ones that are.
 
 ## Install
 
@@ -88,8 +86,7 @@ evidence base, ~30 primary-verified sources.
 v0.2 — the full exam works end to end: static checks + session backtest +
 verified report. Tested (`python3 -m unittest discover -s tests`), calibrated
 against real-world gold-standard files (`python3 fixtures/fetch.py`), and
-dogfooded: the first patient went from grade C to B by following its
-prescriptions. Issues and PRs welcome.
+dogfooded on a real repo. Issues and PRs welcome.
 
 ## License
 
