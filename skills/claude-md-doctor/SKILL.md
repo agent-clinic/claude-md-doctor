@@ -60,8 +60,10 @@ Read `WORK/refcheck.json`. Your judgment passes:
 1. **Review the failures, don't parrot them.** For each `missing` /
    `machine_specific` / `glob_empty` reference and each `missing` command,
    open the cited file:line and confirm it is a real reference (not prose that
-   merely looks like a path). Discard false positives silently; they must not
-   appear in the report.
+   merely looks like a path — API endpoints, MIME types, git refs, and files
+   the text describes as deleted are the common false positives). Record each
+   false positive in `dismissed_refs` with its reason: the report shows only
+   confirmed findings and discloses dismissals in a collapsed note.
 2. **Extract checkable claims** the scripts cannot: countable assertions in
    the memory files ("3,540 tests across 374 files", "12 UI components",
    "there is no ESLint config"). Verify the cheap ones with quick commands
@@ -81,6 +83,9 @@ Write `WORK/diagnosis.json`:
   "stale_claims": [
     {"claim": "…", "file": "/abs/path", "line": 12,
      "status": "verified|drifted|unverified", "detail": "…"}
+  ],
+  "dismissed_refs": [
+    {"ref": "the exact ref string from refcheck.json", "reason": "why it is a false positive (route not file, MIME type, described as deleted, …)"}
   ],
   "diagnoses": [
     {"state": "dead-ref|stale|vague|ignored|inert|redundant|contradictory|oversized|accretion|generated-unpruned",

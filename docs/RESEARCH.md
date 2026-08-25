@@ -189,6 +189,24 @@ not named in the abstract.)
 - Neighborhood: **SkillSmith** (arXiv:2605.15215) — same skill-compilation direction,
   boundary-guided runtime interfaces.
 
+**Kevin, Raghavan, Puget, et al. (NVIDIA) — "Evaluating Skills, Not Just Agents:
+Agentic Continuous Evaluation of Skills (ACES)."** arXiv:2608.20614 (Aug 2026).
+Paired with/without-skill trials; 145 real skills, 947 scored cases; open-source
+(NVIDIA SkillEvaluator). (Abstract-level verification.)
+- Mean composite "Skill Lift" 0.2134 — but **positive lift in only 72.8% of paired
+  cases**: ~27% of production skills add zero or negative value. Enterprise-scale
+  corroboration of the negative-transfer finding.
+- **Structural scans correlate at Spearman ρ = 0.14 with judged skill value** — the
+  sharpest number yet for "static linting barely predicts whether an instruction
+  artifact helps."
+- → Three uses: (1) positioning — the third leg of the static-is-weak-evidence stool
+  (McMillan: no structural effect; ETH: overviews don't help; ACES: ρ=0.14) — the
+  doctor's static stage stays an opening act, behavioral evidence is the product;
+  (2) the future SKILL.md doctor measures *lift*, not presence; (3) methodological
+  complement to the v0.2 backtest — ACES is the prospective paired trial (costs
+  inference per eval), the backtest is the retrospective chart review (free
+  history); triage retrospectively, confirm expensive cases prospectively.
+
 **Hsieh et al. — "Tool Documentation Enables Zero-Shot Tool-Usage."** arXiv:2308.00675
 (2023). Docs alone match few-shot demos; at scale, docs beat demos. → Invest in the
 description before examples.
@@ -242,6 +260,8 @@ faster milestones) and transfer. → The lineage of the whole skills mechanism.
 | Uppercase effect | +1.85pp acc; ~0 on reasoning models | 2608.03711 |
 | Refined-guidance upside | 33.0% vs 25.5% unguided | Probe-and-Refine 2606.20512 |
 | Prose-skill step adherence | 56% (→68% newer gen); outputs still pass | SIGIL 2607.27309 |
+| Structural scans vs judged skill value | Spearman ρ = 0.14 | ACES 2608.20614 |
+| Skills with zero/negative lift | ~27% (72.8% positive) | ACES 2608.20614 |
 | Script-compiled skill adherence | 86%, model-independent, 0.58× tokens | SIGIL 2607.27309 |
 | Duplicated lines across rules files | ~28.7% | Jiang & Nam 2512.18925 |
 | Workflow-extraction lift | +51.1% rel. (WebArena) | AWM 2409.07429 |

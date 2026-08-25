@@ -18,7 +18,23 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
+
+HEART_RECTS = ('<rect x="2" y="0" width="4" height="2"/><rect x="8" y="0" width="4" height="2"/>'
+               '<rect x="0" y="2" width="14" height="4"/><rect x="2" y="6" width="10" height="2"/>'
+               '<rect x="4" y="8" width="6" height="2"/><rect x="6" y="10" width="2" height="2"/>')
+
+
+def build_hearts(grade):
+    """Condition meter: pixel hearts filled by grade (A=5 … F=1)."""
+    n = {"A": 5, "B": 4, "C": 3, "D": 2, "F": 1}.get((grade or " ")[0].upper(), 0)
+    out = []
+    for i in range(5):
+        style = "" if i < n else ";opacity:.22"
+        out.append('<svg width="13" height="12" viewBox="0 0 14 12" '
+                   'shape-rendering="crispEdges" style="margin:0 1px%s">'
+                   '<g fill="currentColor">%s</g></svg>' % (style, HEART_RECTS))
+    return "".join(out)
 REQUIRED_STAGES = ("intake", "vitals", "refcheck", "diagnosis")
 
 CITATIONS = {
@@ -155,13 +171,18 @@ def build_lab(refcheck, diagnosis, order):
     if not refcheck:
         return "<div class='note'>Records check did not run.</div>"
     parts = []
-    bad_refs = [r for r in refcheck["references"]
-                if r["status"] in ("missing", "machine_specific", "glob_empty")]
-    ok_n = len(refcheck["references"]) - len(bad_refs)
+    flagged = [r for r in refcheck["references"]
+               if r["status"] in ("missing", "machine_specific", "glob_empty")]
+    dismissed = {d["ref"]: d.get("reason", "reviewed: not a real reference")
+                 for d in (diagnosis or {}).get("dismissed_refs", [])}
+    bad_refs = [r for r in flagged if r["ref"] not in dismissed]
+    dropped = [r for r in flagged if r["ref"] in dismissed]
+    ok_n = len(refcheck["references"]) - len(flagged)
     parts.append("<p class='sub'>%d path references checked — %d resolve, "
-                 "%d don't. %d commands checked — %d missing.</p>"
-                 % (len(refcheck["references"]), ok_n, len(bad_refs),
-                    len(refcheck["commands"]),
+                 "%d flagged (%d confirmed on review, %d dismissed as false "
+                 "positives). %d commands checked — %d missing.</p>"
+                 % (len(refcheck["references"]), ok_n, len(flagged),
+                    len(bad_refs), len(dropped), len(refcheck["commands"]),
                     refcheck["stats"]["commands_missing"]))
     if bad_refs:
         rows = ["<tr><th>Reference</th><th>Where</th><th>Status</th><th>Detail</th></tr>"]
@@ -174,6 +195,13 @@ def build_lab(refcheck, diagnosis, order):
                            r["line"], pill, r["status"].replace("_", " "),
                            esc(r["detail"])))
         parts.append("<div class='tablebox'><table>%s</table></div>" % "".join(rows))
+    if dropped:
+        items = "".join("<li><code>%s</code> — %s</li>"
+                        % (esc(r["ref"]), esc(dismissed[r["ref"]]))
+                        for r in dropped)
+        parts.append("<details><summary>%d flag(s) dismissed on review</summary>"
+                     "<ul class='plain foot'>%s</ul></details>"
+                     % (len(dropped), items))
     missing_cmds = [c for c in refcheck["commands"] if c["status"] == "missing"]
     if missing_cmds:
         rows = ["<tr><th>Command</th><th>Where</th><th>Detail</th></tr>"]
@@ -279,6 +307,7 @@ def main():
         "{{EXAM_DATE}}": time.strftime("%Y-%m-%d %H:%M"),
         "{{VERSION}}": VERSION,
         "{{GRADE}}": esc(grade),
+        "{{HEARTS}}": build_hearts(grade),
         "{{GRADE_CLASS}}": (grade[:1].lower() if grade and grade[0].isalpha() else "c"),
         "{{CHIEF_COMPLAINT}}": esc((diagnosis or {}).get(
             "chief_complaint", "No model diagnosis pass was recorded.")),
