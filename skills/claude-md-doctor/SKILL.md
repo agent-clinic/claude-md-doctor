@@ -101,12 +101,14 @@ null) — and then say so in chat; the report's History section will state it.
 
 Write `WORK/rulebook.json` (schema documented at the top of `backtest.py`).
 Guidance:
-- Only **mechanically checkable** rules get matchers in this version: bans and
-  requirements visible in Bash commands or Edit/Write content ("never import
-  X", "never hardcode a colour", "don't add an ESLint config"), and
-  finish-ordering rules ("run `pnpm verify` before you finish") via
-  `ordering`. Semantic rules ("keep components small in spirit") are judged in
-  diagnoses, not matchers — do not force a regex onto them.
+- **Decompose EVERY directive in the file** — the rulebook is the complete
+  directive inventory, and the enforcement ladder's "N of M" is only honest
+  if M is the whole file. Only **mechanically checkable** rules get matchers:
+  bans and requirements visible in Bash commands or Edit/Write content, and
+  finish-ordering rules via `ordering`. Judge-class and not-yet-mechanizable
+  rules go in as **classification-only entries** (enforcement block, no
+  matchers) — never force a regex onto a semantic rule. Informational
+  content (facts, architecture, API semantics) stays OUT of the rulebook.
 - For edit/write events the matchable text is `PATH: <file_path>` on the first
   line followed by the (truncated) new content — anchor path-based rules on
   `^PATH: .*…` and content rules on the body.

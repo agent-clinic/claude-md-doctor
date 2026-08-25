@@ -105,6 +105,8 @@ def recommend_arming(st, enf):
         return "judge-class: stays prose; audited by backtest, reliability ceiling applies"
     if cls not in ("hook", "linter", "test"):
         return "unclassified — classify before arming"
+    if not st.get("mechanized", True):
+        return "classified, not yet mechanized — write a matcher to backtest it"
     v, c = st["violations"], st["causes"]
     if v == 0:
         return ("healthy in window — enforcement optional" if st["compliances"]
@@ -241,6 +243,9 @@ def main():
             "violations_by_depth": {"early": 0, "mid": 0, "late": 0},
             "causes": {}, "enforcement": rule.get("enforcement"),
             "origin": rule.get("origin", "root"),
+            "mechanized": bool((rule.get("matchers") or {}).get("violation")
+                              or (rule.get("matchers") or {}).get("compliance")
+                              or rule.get("ordering")),
             "samples": {"violations": [], "compliances": []},
         }
 
