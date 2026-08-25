@@ -1,10 +1,10 @@
 {
   "name": "claude-md-doctor",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Give your CLAUDE.md a checkup: size vitals vs official guidance, dead references, stale content — with a doctor-style HTML report that cites its evidence.",
   "author": {
     "name": "Tristan Chen"
   },
-  "homepage": "https://github.com/tx871217/claude-md-doctor",
+  "homepage": "https://github.com/agent-clinic/claude-md-doctor",
   "license": "MIT"
 }

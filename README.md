@@ -58,7 +58,7 @@ ones that are.
 As a plugin (recommended):
 
 ```
-/plugin marketplace add tx871217/claude-md-doctor
+/plugin marketplace add agent-clinic/claude-md-doctor
 ```
 
 then install `claude-md-doctor` from the `/plugin` menu.
@@ -66,7 +66,7 @@ then install `claude-md-doctor` from the `/plugin` menu.
 Or via the [skills.sh](https://skills.sh) CLI:
 
 ```
-npx skills add tx871217/claude-md-doctor
+npx skills add agent-clinic/claude-md-doctor
 ```
 
 Or bare: copy `skills/claude-md-doctor/` into `~/.claude/skills/`.
