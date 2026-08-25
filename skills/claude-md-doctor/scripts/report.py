@@ -53,6 +53,7 @@ CITATIONS = {
     "longllmlingua": ("LongLLMLingua (ACL 2024): +21.4% at ~4× prompt compression — cutting filler can raise performance.", "https://arxiv.org/abs/2310.06839"),
     "caps": ("Dillitzer et al., “Attention is Case-Sensitive”: uppercase shifts +1.85pp accuracy; near-zero on reasoning models; saturation spends the effect.", "https://arxiv.org/abs/2608.03711"),
     "sigil": ("SIGIL: prose agents perform 56% of the steps their own skill mandates while outputs still pass checks; script-compiled harnesses reach 86%.", "https://arxiv.org/abs/2607.27309"),
+    "trace": ("TRACE: with memory alone, 57.5% of applicable user-preference checks are still violated; compiling corrections into runtime checks cuts violations from 100% to 2–38%.", "https://arxiv.org/abs/2606.13174"),
     "agent-readmes": ("“Agent READMEs” (2,303 context files): tests 75.9% / implementation 70.8% / architecture 68.1%; security & performance nearly absent; files accrete without pruning.", "https://arxiv.org/abs/2511.12884"),
     "cursor-rules": ("Jiang & Nam (MSR 2026), 401 repos: five-theme content taxonomy; ~28.7% duplicated lines across a repo's rules files.", "https://arxiv.org/abs/2512.18925"),
     "awm": ("Agent Workflow Memory: induced, selectively-loaded workflows +51.1% relative on WebArena — recurring procedures belong in on-demand skills.", "https://arxiv.org/abs/2409.07429"),

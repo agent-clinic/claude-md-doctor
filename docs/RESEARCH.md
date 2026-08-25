@@ -224,6 +224,24 @@ Paired with/without-skill trials; 145 real skills, 947 scored cases; open-source
   inference per eval), the backtest is the retrospective chart review (free
   history); triage retrospectively, confirm expensive cases prospectively.
 
+**Zhou, Guo, Zhuang, et al. — "Getting Better at Working With You: Compiling User
+Corrections into Runtime Enforcement for Coding Agents (TRACE)."** arXiv:2606.13174
+(Jun 2026). (Abstract-level verification.)
+- Names the core gap: **preference access ≠ preference compliance** — with Mem0
+  memory, **57.5% of applicable preference checks are still violated**. Rules fail
+  *while remembered*: direct causal support for the defiance failure-cause and for
+  "prose/memory is a request."
+- Pipeline = mine user corrections → rewrite as atomic rules → **compile into
+  runtime checks that must pass before completion**. Compilation payoff:
+  violations **100% → 2.0%** (OOD) / 37.6% (ID) on ClawArena coding tasks; honest
+  limit: only → 60.5% on memory-intensive tasks — compilation is not universal.
+- → Validates the v0.3 stack end-to-end (correction mining + decomposition +
+  enforcement compilation) with measured deltas. Our differentiators remain:
+  retrospective backtest before arming, native enforcement layers (hooks/linters
+  binding humans too), cause-of-failure triage choosing arming strength. Their
+  simulated user-in-the-loop benches (ClawArena/MemoryArena) are eval-design
+  references.
+
 **Hsieh et al. — "Tool Documentation Enables Zero-Shot Tool-Usage."** arXiv:2308.00675
 (2023). Docs alone match few-shot demos; at scale, docs beat demos. → Invest in the
 description before examples.
@@ -278,6 +296,8 @@ faster milestones) and transfer. → The lineage of the whole skills mechanism.
 | Refined-guidance upside | 33.0% vs 25.5% unguided | Probe-and-Refine 2606.20512 |
 | Prose-skill step adherence | 56% (→68% newer gen); outputs still pass | SIGIL 2607.27309 |
 | Structural scans vs judged skill value | Spearman ρ = 0.14 | ACES 2608.20614 |
+| Preference violations despite memory (Mem0) | 57.5% | TRACE 2606.13174 |
+| Compiled-enforcement payoff | 100% → 2.0% (OOD) / 37.6% (ID) violations | TRACE 2606.13174 |
 | Skills with zero/negative lift | ~27% (72.8% positive) | ACES 2608.20614 |
 | Script-compiled skill adherence | 86%, model-independent, 0.58× tokens | SIGIL 2607.27309 |
 | Duplicated lines across rules files | ~28.7% | Jiang & Nam 2512.18925 |
