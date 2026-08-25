@@ -51,6 +51,13 @@ Read `WORK/vitals.json`. The script measured; you interpret. Detector notes:
 - Very low `imperative_ratio` on a large file suggests narrative documentation
   rather than instructions — read a sample and judge; the arcan case (a
   CLAUDE.md containing a sabotage manual) is why this check exists.
+- **Judge the aggregate surface, not only each file** (`launch_loaded_combined`
+  plus the file count): many individually-healthy files can still sum to a
+  heavy standing context, and cross-file duplication or contradiction is
+  invisible per-file. When the combined surface is the problem, prescribe the
+  escalating ladder — consolidate duplicates, then a thin router/index over
+  on-demand files, then a one-screen always-on invariants file with
+  procedures moved to skills (citation id `surface-bloat`).
 
 ## Stage 3 — records check
 

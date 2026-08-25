@@ -87,11 +87,8 @@ sup a{color:var(--info);text-decoration:none;font-size:10.5px}
 .foot li{margin-bottom:6px}
 .note{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 14px;
   font-size:13px;margin:14px 0}
-.signoff{display:flex;align-items:center;gap:10px;margin-top:36px;
-  border-top:1px solid var(--line);padding-top:16px}
-.signoff .who{font-family:var(--mono);font-size:12.5px;color:var(--ink2)}
-.signoff .who b{color:var(--ink)}
-.privacy{font-size:12px;color:var(--ink3);margin-top:10px}
+.privacy{font-size:12px;color:var(--ink3);margin-top:36px;
+  border-top:1px solid var(--line);padding-top:14px}
 ul.plain{margin:0;padding-left:20px}
 ul.plain li{margin-bottom:6px}
 @media (max-width:560px){header{flex-wrap:wrap}.grade{order:-1;margin-left:auto}}
@@ -102,7 +99,7 @@ ul.plain li{margin-bottom:6px}
 <div class="wrap">
   <header>
     <div class="masthead">
-      <svg class="bot" width="64" height="60" viewBox="0 0 64 60" shape-rendering="crispEdges" aria-label="DOC-8, the bit doctor" role="img">
+      <svg class="bot" width="64" height="60" viewBox="0 0 64 60" shape-rendering="crispEdges" aria-label="pixel robot doctor" role="img">
         <!-- antenna -->
         <rect x="28" y="0" width="8" height="4" fill="var(--bot-eye)"/>
         <rect x="30" y="4" width="4" height="4" fill="var(--bot-body)"/>
@@ -172,23 +169,6 @@ ul.plain li{margin-bottom:6px}
 
   <section><h2>Evidence</h2><ol class="foot">{{FOOTNOTES_HTML}}</ol></section>
 
-  <div class="signoff">
-    <svg class="bot" width="26" height="24" viewBox="0 0 64 60" shape-rendering="crispEdges" aria-hidden="true">
-      <rect x="28" y="0" width="8" height="4" fill="var(--bot-eye)"/>
-      <rect x="30" y="4" width="4" height="4" fill="var(--bot-body)"/>
-      <rect x="12" y="8" width="40" height="24" fill="var(--bot-body)"/>
-      <rect x="44" y="4" width="8" height="8" fill="var(--bot-mirror)"/>
-      <rect x="16" y="16" width="32" height="8" fill="var(--bot-visor)"/>
-      <rect x="20" y="18" width="6" height="4" fill="var(--bot-eye)"/>
-      <rect x="38" y="18" width="6" height="4" fill="var(--bot-eye)"/>
-      <rect x="26" y="32" width="12" height="4" fill="var(--bot-body)"/>
-      <rect x="14" y="34" width="36" height="24" fill="var(--bot-body)"/>
-      <rect x="16" y="36" width="32" height="20" fill="var(--bot-coat)"/>
-      <rect x="30" y="40" width="4" height="12" fill="var(--crit)"/>
-      <rect x="26" y="44" width="12" height="4" fill="var(--crit)"/>
-    </svg>
-    <div class="who">Examined by <b>DOC-8</b> · resident bit doctor · second opinions welcome</div>
-  </div>
   <div class="privacy">This exam ran entirely on this machine; no file left it.
   Quotes from repository files are limited to short excerpts. The report may still
   contain repository-private strings — review before sharing.

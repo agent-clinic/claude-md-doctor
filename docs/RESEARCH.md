@@ -97,6 +97,23 @@ Manifests: An Empirical Study of Claude Code."** PROFES 2025, arXiv:2509.14744.
   documented developer pain.
 - → Informs: CLAUDE.md-specific structure norms, and the market gap this tool fills.
 
+**"Too Many CLAUDE.md and Skill Files? 4 Fixes for Agent Memory Bloat"** — XTrace blog,
+Jul/Aug 2026 (`consensus` tier — practitioner writing).
+- Names the **aggregate-surface** failure mode a per-file view misses: 60 memory files
+  averaging 800 words ≈ 64k tokens — a third of a 200k window spent before the first
+  prompt; cites a real 187-file, four-folder setup with internal contradictions.
+  Failure is silent degradation, not a loud error.
+- Four escalating fixes that map onto the doctor's prescription ladder: consolidate
+  duplicates ("30–50% reduction on the first pass" — pairs with the ~28.7% measured
+  duplication below), a thin router/index over domain folders ("standing context cost
+  becomes the size of the index rather than the corpus" — the pointer pattern the gold
+  corpus shows), a one-screen always-on invariants file with procedures on demand, and
+  retrieval as the architectural end-state.
+- → Informs: a first-class **combined-surface diagnosis** (file count + total
+  launch-loaded tokens + cross-file duplication/contradictions), not just per-file
+  vitals; the mechanism it leans on (mid-context attention) is backed causally by
+  Lost-in-the-Middle / Context Rot above.
+
 **Jiang & Nam — "Beyond the Prompt: An Empirical Study of Cursor Rules."** MSR 2026,
 arXiv:2512.18925. 401 OSS repos with cursor rules.
 - Five-theme content taxonomy: Conventions, Guidelines, Project Information, LLM

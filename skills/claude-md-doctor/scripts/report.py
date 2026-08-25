@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 
 HEART_RECTS = ('<rect x="2" y="0" width="4" height="2"/><rect x="8" y="0" width="4" height="2"/>'
                '<rect x="0" y="2" width="14" height="4"/><rect x="2" y="6" width="10" height="2"/>'
@@ -57,6 +57,7 @@ CITATIONS = {
     "cursor-rules": ("Jiang & Nam (MSR 2026), 401 repos: five-theme content taxonomy; ~28.7% duplicated lines across a repo's rules files.", "https://arxiv.org/abs/2512.18925"),
     "awm": ("Agent Workflow Memory: induced, selectively-loaded workflows +51.1% relative on WebArena — recurring procedures belong in on-demand skills.", "https://arxiv.org/abs/2409.07429"),
     "unblocked": ("Unblocked, “Audit a bloated CLAUDE.md in 7 steps” — the manual audit this tool automates.", "https://getunblocked.com/blog/audit-fix-bloated-claude-md/"),
+    "surface-bloat": ("“Too Many CLAUDE.md and Skill Files?” — aggregate memory surfaces fail silently (60 files ≈ 64k standing tokens); fixes: consolidate → thin router/index → one-screen invariants + on-demand procedures.", "https://xtrace.ai/blog/too-many-claude-skill-files"),
 }
 
 SEV_PILL = {"critical": "p-crit", "warn": "p-warn", "info": "p-info", "ok": "p-ok"}
