@@ -33,7 +33,7 @@ It understands the real memory surface: `CLAUDE.md`, `.claude/CLAUDE.md`,
 `@imports` (depth 4, backtick-aware), `claudeMdExcludes`, ancestor directories —
 and it treats the pointer-to-`AGENTS.md` pattern as healthy, examining the target.
 
-## The backtest — the part nobody else does
+## The backtest — check if CLAUDE.md actually works in your sessions
 
 Your own Claude Code session transcripts (`~/.claude/projects/…`) already
 record whether past sessions actually followed each rule in your CLAUDE.md.
