@@ -1,0 +1,13 @@
+{
+  "name": "claude-md-doctor",
+  "owner": {
+    "name": "Tristan Chen"
+  },
+  "plugins": [
+    {
+      "name": "claude-md-doctor",
+      "source": "./",
+      "description": "Diagnose the health of a repo's CLAUDE.md / AGENTS.md: size vitals, dead references, stale content, pathology markers — doctor-style HTML report with evidence-cited prescriptions."
+    }
+  ]
+}

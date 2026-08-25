@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+.claude-md-doctor/
+work/
+
+# internal working plan — not part of the public repo
+PLAN.md

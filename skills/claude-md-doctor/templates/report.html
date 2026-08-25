@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLAUDE.md checkup — {{REPO_NAME}}</title>
+<style>
+:root{
+  --bg:#f6f7f5; --card:#ffffff; --ink:#1c2024; --ink2:#5b6470; --ink3:#8a93a0;
+  --line:#e3e6e2; --accent:#2f6f5e; --accent-soft:#e7f1ee;
+  --crit:#b23c2e; --crit-soft:#f9e9e6; --warn:#9a6d1f; --warn-soft:#f7efdd;
+  --ok:#2c7a5c; --ok-soft:#e4f1eb; --info:#2a6fb8; --info-soft:#e6eef7;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#15171a; --card:#1d2025; --ink:#e8eaed; --ink2:#a8b0ba; --ink3:#717a86;
+    --line:#2c3138; --accent:#5eb094; --accent-soft:#20302b;
+    --crit:#e07a6c; --crit-soft:#3a2320; --warn:#d4a04c; --warn-soft:#362c17;
+    --ok:#66b394; --ok-soft:#1e3229; --info:#6ba3dd; --info-soft:#1d2b3d;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 64px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:8px}
+.clinic{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
+h1{font-size:26px;margin:2px 0 4px}
+.sub{color:var(--ink2);font-size:13px}
+.grade{min-width:84px;text-align:center;border:2px solid var(--line);
+  border-radius:10px;padding:8px 14px;background:var(--card)}
+.grade b{display:block;font-size:34px;line-height:1}
+.grade span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+.grade.g-a{border-color:var(--ok);color:var(--ok)}
+.grade.g-b{border-color:var(--accent);color:var(--accent)}
+.grade.g-c{border-color:var(--warn);color:var(--warn)}
+.grade.g-d,.grade.g-f{border-color:var(--crit);color:var(--crit)}
+.chief{background:var(--card);border-left:4px solid var(--accent);border-radius:0 8px 8px 0;
+  padding:12px 16px;margin:18px 0;font-size:15px}
+.chief b{color:var(--ink2);font-size:11px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:4px}
+section{margin:28px 0}
+h2{font-size:13px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2);
+  border-bottom:1px solid var(--line);padding-bottom:6px;margin:0 0 14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.card .v{font-size:22px;font-weight:650}
+.card .k{font-size:12px;color:var(--ink2);margin-top:2px}
+.card .n{font-size:11px;color:var(--ink3);margin-top:4px}
+.card.bad .v{color:var(--crit)} .card.warned .v{color:var(--warn)} .card.fine .v{color:var(--ok)}
+.tablebox{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);text-align:left}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+code,.mono{font-family:var(--mono);font-size:12.5px}
+.pill{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.p-crit{background:var(--crit-soft);color:var(--crit)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-info{background:var(--info-soft);color:var(--info)}
+.dx{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:10px}
+.dx-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.dx-title{font-weight:650}
+.dx-loc{color:var(--ink3);font-size:12px;font-family:var(--mono)}
+.dx p{margin:8px 0 0;color:var(--ink2);font-size:14px}
+.dx .rx{margin-top:10px;padding:10px 12px;background:var(--accent-soft);border-radius:6px;font-size:13.5px}
+.dx .rx b{color:var(--accent);font-size:11px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:3px}
+details{margin-top:8px}
+summary{cursor:pointer;font-size:12.5px;color:var(--info)}
+details pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  padding:10px;font-size:12px;overflow-x:auto;white-space:pre-wrap}
+sup a{color:var(--info);text-decoration:none;font-size:10.5px}
+.foot{font-size:12.5px;color:var(--ink2)}
+.foot li{margin-bottom:6px}
+.note{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 14px;
+  font-size:13px;margin:14px 0}
+.privacy{font-size:12px;color:var(--ink3);border-top:1px solid var(--line);
+  margin-top:36px;padding-top:14px}
+ul.plain{margin:0;padding-left:20px}
+ul.plain li{margin-bottom:6px}
+@media print{body{background:#fff}.wrap{max-width:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="clinic">claude-md-doctor · checkup report</div>
+      <h1>{{REPO_NAME}}</h1>
+      <div class="sub">Examined {{EXAM_DATE}} · claude-md-doctor v{{VERSION}}</div>
+    </div>
+    <div class="grade g-{{GRADE_CLASS}}"><b>{{GRADE}}</b><span>chart grade</span></div>
+  </header>
+
+  {{EXAM_NOTE}}
+
+  <div class="chief"><b>Chief complaint</b>{{CHIEF_COMPLAINT}}</div>
+
+  <section><h2>Patient chart</h2>
+    <div class="tablebox"><table>{{PATIENT_ROWS}}</table></div>
+  </section>
+
+  <section><h2>Vitals</h2>
+    <div class="cards">{{VITALS_CARDS}}</div>
+    <div style="height:12px"></div>
+    <div class="tablebox"><table>
+      <tr><th>File</th><th>Lines</th><th>~Tokens</th><th>Markers</th></tr>
+      {{FILES_TABLE}}
+    </table></div>
+  </section>
+
+  <section><h2>Lab results — records check</h2>{{LAB_HTML}}</section>
+
+  <section><h2>History — session adherence</h2>{{HISTORY_HTML}}</section>
+
+  <section><h2>Diagnoses</h2>{{DIAGNOSES_HTML}}</section>
+
+  <section><h2>Prescriptions</h2>{{PRESCRIPTIONS_HTML}}</section>
+
+  <section><h2>Follow-up</h2>{{FOLLOWUP_HTML}}</section>
+
+  <section><h2>Evidence</h2><ol class="foot">{{FOOTNOTES_HTML}}</ol></section>
+
+  <div class="privacy">This exam ran entirely on this machine; no file left it.
+  Quotes from repository files are limited to short excerpts. The report may still
+  contain repository-private strings — review before sharing.
+  claude-md-doctor is an independent open-source tool, not affiliated with Anthropic.</div>
+</div>
+</body>
+</html>
