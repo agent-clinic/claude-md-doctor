@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 60" shape-rendering="crispEdges" role="img" aria-label="pixel robot doctor">
+  <!-- antenna -->
+  <rect x="28" y="0" width="8" height="4" fill="#5fd4c8"/>
+  <rect x="30" y="4" width="4" height="4" fill="#93a0af"/>
+  <!-- head -->
+  <rect x="12" y="8" width="40" height="24" fill="#93a0af"/>
+  <!-- head mirror -->
+  <rect x="40" y="8" width="4" height="4" fill="#d4a04c"/>
+  <rect x="44" y="4" width="8" height="8" fill="#d4a04c"/>
+  <rect x="46" y="6" width="4" height="4" fill="#fdfdfc"/>
+  <!-- visor + eyes -->
+  <rect x="16" y="16" width="32" height="8" fill="#2b3440"/>
+  <rect x="20" y="18" width="6" height="4" fill="#5fd4c8"/>
+  <rect x="38" y="18" width="6" height="4" fill="#5fd4c8"/>
+  <!-- mouth -->
+  <rect x="26" y="27" width="12" height="2" fill="#2b3440"/>
+  <!-- neck -->
+  <rect x="26" y="32" width="12" height="4" fill="#93a0af"/>
+  <!-- coat (backplate = outline) -->
+  <rect x="14" y="34" width="36" height="24" fill="#93a0af"/>
+  <rect x="16" y="36" width="32" height="20" fill="#fdfdfc"/>
+  <!-- red cross -->
+  <rect x="30" y="40" width="4" height="12" fill="#b23c2e"/>
+  <rect x="26" y="44" width="12" height="4" fill="#b23c2e"/>
+</svg>

@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 
 HEART_RECTS = ('<rect x="2" y="0" width="4" height="2"/><rect x="8" y="0" width="4" height="2"/>'
                '<rect x="0" y="2" width="14" height="4"/><rect x="2" y="6" width="10" height="2"/>'
@@ -243,7 +243,7 @@ def build_diagnoses(diagnosis, order):
                   % esc("\n".join(d["evidence"])))
         rx = ""
         if d.get("prescription"):
-            rx = "<div class='rx'><b>Prescription</b>%s</div>" % esc(d["prescription"])
+            rx = "<div class='rx'><b>💊 Prescription</b>%s</div>" % esc(d["prescription"])
         out.append(
             "<div class='dx'><div class='dx-head'>"
             "<span class='pill %s'>%s</span>"
@@ -257,13 +257,18 @@ def build_diagnoses(diagnosis, order):
     return "\n".join(out) or "<p class='sub'>No diagnoses recorded.</p>"
 
 
+RX_EMOJIS = ["💊", "🩹", "💉", "🧪", "🌡️"]
+
+
 def build_prescriptions(diagnosis, order):
     items = []
-    for p in (diagnosis or {}).get("prescriptions", []):
-        items.append("<li><b>%s</b>%s<br><span class='sub'>%s</span></li>"
-                     % (esc(p.get("action", "")), cite(p.get("citations"), order),
+    for i, p in enumerate((diagnosis or {}).get("prescriptions", [])):
+        items.append("<li><span class='pe'>%s</span><div><b>%s</b>%s<br>"
+                     "<span class='sub'>%s</span></div></li>"
+                     % (RX_EMOJIS[i % len(RX_EMOJIS)], esc(p.get("action", "")),
+                        cite(p.get("citations"), order),
                         esc(p.get("rationale", ""))))
-    return "<ul class='plain'>%s</ul>" % "".join(items) if items \
+    return "<ul class='rxlist'>%s</ul>" % "".join(items) if items \
         else "<p class='sub'>None beyond the per-diagnosis prescriptions.</p>"
 
 
@@ -300,7 +305,7 @@ def main():
         "Not examined in v0.1. %d session transcript(s) were located for this "
         "repo — the v0.2 backtest will replay each rule against them."
         % intake.get("sessions", {}).get("session_files", 0))
-    followup = "".join("<li>%s</li>" % esc(f)
+    followup = "".join("<li><span class='pe'>🩺</span><div>%s</div></li>" % esc(f)
                        for f in (diagnosis or {}).get("followup", []))
 
     repl = {
@@ -320,8 +325,9 @@ def main():
         "{{HISTORY_HTML}}": "<p class='sub'>%s</p>" % esc(history),
         "{{DIAGNOSES_HTML}}": build_diagnoses(diagnosis, order),
         "{{PRESCRIPTIONS_HTML}}": build_prescriptions(diagnosis, order),
-        "{{FOLLOWUP_HTML}}": "<ul class='plain'>%s</ul>" % (
-            followup or "<li>Re-run after applying prescriptions.</li>"),
+        "{{FOLLOWUP_HTML}}": "<ul class='rxlist'>%s</ul>" % (
+            followup or "<li><span class='pe'>🩺</span>"
+            "<div>Re-run after applying prescriptions.</div></li>"),
     }
     footnotes = "".join(
         '<li id="fn-%s">%s <a href="%s">%s</a></li>'

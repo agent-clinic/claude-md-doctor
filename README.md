@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/doctor.svg" width="112" alt="pixel robot doctor">
+</p>
+
 # claude-md-doctor
 
 **Give your CLAUDE.md a checkup.** A Claude Code skill that examines your repo's
