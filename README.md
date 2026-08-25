@@ -11,7 +11,7 @@ diagnoses, prescriptions — and hands you a report that cites its evidence.
 > Everyone else lints the file or grades the sessions. claude-md-doctor
 > cross-examines the file against reality — and cites receipts.
 
-## What the exam covers (v0.1)
+## What the exam covers
 
 - **Vitals** — effective size vs the official guidance (*"target under 200 lines
   per CLAUDE.md file"* — [Claude Code memory docs](https://code.claude.com/docs/en/memory)),

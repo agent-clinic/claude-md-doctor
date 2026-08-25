@@ -96,6 +96,43 @@ def compile_rule(rule):
             if m.get(k)}
 
 
+ENV_PREFIX_RE = re.compile(r"^(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S+)\s+)+")
+
+
+def command_word(cmd):
+    """First meaningful word of a shell command: split compound commands on
+    && / ; / |, strip env-assignment prefixes, take the first real word."""
+    for seg in re.split(r"&&|\|\||;|\|", cmd or ""):
+        seg = ENV_PREFIX_RE.sub("", seg.strip())
+        words = seg.split()
+        if words and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", words[0]):
+            return os.path.basename(words[0])[:24]
+    return "?"
+
+
+def build_timeline(tool_seq, last_mut, last_mut_turn, mutations):
+    """Run-length encode the session's tool sequence for the report's strip
+    visualization, and summarize what ran after the last mutation."""
+    segments, after_counts = [], {}
+    for kind, idx, word in tool_seq:
+        after = idx > last_mut
+        if segments and segments[-1]["k"] == kind and segments[-1]["after"] == after:
+            segments[-1]["n"] += 1
+        else:
+            segments.append({"k": kind, "n": 1, "after": after})
+        if after and kind == "bash" and word:
+            after_counts[word] = after_counts.get(word, 0) + 1
+    if len(segments) > 60:  # keep the strip drawable
+        head, tail = segments[:30], segments[-29:]
+        merged = {"k": "other", "n": sum(s["n"] for s in segments[30:-29]),
+                  "after": tail[0]["after"] if tail else False}
+        segments = head + [merged] + tail
+    return {"segments": segments, "edits": mutations,
+            "last_edit_turn": last_mut_turn,
+            "after_cmds": sorted(after_counts.items(),
+                                 key=lambda kv: -kv[1])[:5]}
+
+
 def excerpt(text, match, span=90):
     s, e = match.start(), match.end()
     lo, hi = max(0, s - span), min(len(text), e + span)
@@ -141,25 +178,32 @@ def main():
             if rule.get("ordering"):
                 o = rule["ordering"]
                 req = re.compile(o["require"])
-                last_mut, req_after = -1, False
+                last_mut, last_mut_turn, req_after = -1, 0, False
                 mutations = 0
-                tail = []
+                tool_seq = []  # (kind, event index, command-word or None)
                 for i, ev in enumerate(events):
                     k = event_kind(ev)
                     if k in ("edit", "write") and path_in_scope(ev, repo, scope):
                         last_mut, mutations, req_after = i, mutations + 1, False
+                        last_mut_turn = ev.get("turn", 0)
+                        tool_seq.append(("edit", i, None))
                     elif k == "bash":
-                        tail.append(ev.get("command", "")[:120])
-                        if req.search(ev.get("command", "")) and i > last_mut:
+                        cmd = ev.get("command", "")
+                        tool_seq.append(("bash", i, command_word(cmd)))
+                        if req.search(cmd) and i > last_mut:
                             req_after = True
+                    elif k in ("write", "edit", "tool"):
+                        tool_seq.append(("other", i, None))
                 if mutations >= o.get("min_mutations", 1) and not pre_rule:
                     st["opportunities"] += 1
                     active = True
+                    viz = build_timeline(tool_seq, last_mut, last_mut_turn,
+                                         mutations)
                     if req_after:
                         st["compliances"] += 1
                         if len(st["samples"]["compliances"]) < SAMPLE_C:
                             st["samples"]["compliances"].append(
-                                {"session": sess["id"],
+                                {"session": sess["id"], "ok": True, "viz": viz,
                                  "note": "%d file edits; required command ran afterwards" % mutations})
                     else:
                         st["violations"] += 1
@@ -167,9 +211,9 @@ def main():
                         if len(st["samples"]["violations"]) < SAMPLE_V:
                             st["samples"]["violations"].append(
                                 {"session": sess["id"], "turn": events[-1].get("turn", 0),
+                                 "viz": viz,
                                  "note": "session ended after %d file edits without: %s"
-                                         % (mutations, o.get("desc", o["require"])),
-                                 "excerpt": " | ".join(tail[-3:]) or "(no shell commands)"})
+                                         % (mutations, o.get("desc", o["require"]))})
             else:
                 for i, ev in enumerate(events):
                     if event_kind(ev) not in kinds or not path_in_scope(ev, repo, scope):

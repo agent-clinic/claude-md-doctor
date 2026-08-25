@@ -170,6 +170,10 @@ class TestBacktest(ToyRepo):
         self.assertEqual(bt["V1"]["violations"], 1)   # outside-repo edit excluded
         self.assertEqual(bt["O1"]["violations"], 1)   # build ran, verify didn't
         self.assertEqual(bt["V1"]["violations_by_depth"]["early"], 1)
+        viz = bt["O1"]["samples"]["violations"][0]["viz"]
+        self.assertEqual(viz["edits"], 1)
+        self.assertEqual(viz["after_cmds"], [["pnpm", 1]])
+        self.assertTrue(any(s["after"] for s in viz["segments"]))
 
 
 class TestReport(ToyRepo):

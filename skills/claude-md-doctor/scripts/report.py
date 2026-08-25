@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 HEART_RECTS = ('<rect x="2" y="0" width="4" height="2"/><rect x="8" y="0" width="4" height="2"/>'
                '<rect x="0" y="2" width="14" height="4"/><rect x="2" y="6" width="10" height="2"/>'
@@ -78,7 +78,7 @@ def cite(ids, order):
     return "".join(sups)
 
 
-def build_patient(intake, vitals):
+def build_patient(intake, vitals, backtest=None):
     rows = []
     def row(k, v):
         rows.append("<tr><th style='width:220px'>%s</th><td>%s</td></tr>" % (k, v))
@@ -102,8 +102,10 @@ def build_patient(intake, vitals):
            us.get("user_rules_count", 0),
            "included in exam" if us.get("included_in_exam") else "not examined (repo scope only)")))
     sess = intake.get("sessions", {})
-    row("Session history found", ("%d transcript(s) at <code>%s</code> — not examined in v0.1"
-        % (sess.get("session_files", 0), esc(sess.get("dir"))))
+    examined = ("replayed in the History section below" if backtest
+                else "not examined in this run")
+    row("Session history found", ("%d transcript(s) at <code>%s</code> — %s"
+        % (sess.get("session_files", 0), esc(sess.get("dir")), examined))
         if sess.get("dir") else "none found for this path on this machine")
     return "\n".join(rows)
 
@@ -233,6 +235,47 @@ VERDICT_PILL = {"healthy": "p-ok", "ignored": "p-crit", "mixed": "p-warn",
                 "inert": "p-info", "unverified": "p-info"}
 
 
+TL_CLASS = {"edit": "tl-e", "bash": "tl-b", "other": "tl-o"}
+TL_LABEL = {"edit": "repo file edit", "bash": "shell command", "other": "other tool"}
+
+
+def render_sample(s):
+    """One evidence sample. Ordering samples carry a `viz` timeline and are
+    drawn as a strip: amber = repo edits, blue = shell commands, gray = other;
+    the red-underlined zone is everything after the last edit — where the
+    required command should have appeared."""
+    head = "<div class='tl-sum'><b>%s</b>%s — %s</div>" % (
+        esc(s.get("session", "")[:8]),
+        " (turn %s)" % s["turn"] if s.get("turn") else "",
+        esc(s.get("note") or s.get("excerpt", "")))
+    viz = s.get("viz")
+    if not viz:
+        return ("<div class='tl-block'>%s%s</div>"
+                % (head, "<pre>%s</pre>" % esc(s["excerpt"])
+                   if s.get("excerpt") and s.get("note") else ""))
+    segs = "".join(
+        "<span class='tl-seg %s%s' style='flex:%d' title='%d× %s%s'></span>"
+        % (TL_CLASS.get(seg["k"], "tl-o"),
+           " tl-after" if seg["after"] else "", max(seg["n"], 1), seg["n"],
+           TL_LABEL.get(seg["k"], seg["k"]),
+           " (after last edit)" if seg["after"] else "")
+        for seg in viz["segments"])
+    ok = s.get("ok")
+    after = ", ".join("%s ×%d" % (w, n) for w, n in viz["after_cmds"]) \
+        or "nothing"
+    verdict_mark = ("<span class='tl-ok'>✓ required command ran</span>" if ok
+                    else "<span class='tl-x'>✗ required command never ran</span>")
+    return ("<div class='tl-block'>%s<div class='tl'>%s</div>"
+            "<div class='tl-sum'>%d repo edits, last at turn %s · after the last "
+            "edit: %s · %s</div>"
+            "<div class='tl-legend'><span class='tl-key tl-e'></span>repo edits "
+            "<span class='tl-key tl-b'></span>shell <span class='tl-key tl-o'></span>"
+            "other · <span class='tl-key tl-o tl-after'></span>red-underlined = "
+            "after the last edit</div></div>"
+            % (head, segs, viz["edits"], viz.get("last_edit_turn", "?"),
+               esc(after), verdict_mark))
+
+
 def build_history(backtest, diagnosis, order, fallback_note):
     if not backtest:
         return "<p class='sub'>%s</p>" % esc(fallback_note)
@@ -265,13 +308,13 @@ def build_history(backtest, diagnosis, order, fallback_note):
         ev = ""
         samples = st["samples"]["violations"] + st["samples"]["compliances"]
         if samples or v.get("note"):
-            lines = ([v["note"]] if v.get("note") else []) + [
-                "%s (turn %s): %s" % (s.get("session", "")[:8],
-                                      s.get("turn", "?"),
-                                      s.get("excerpt") or s.get("note", ""))
-                for s in samples]
-            ev = ("<details><summary>evidence</summary><pre>%s</pre></details>"
-                  % esc("\n".join(lines)))
+            blocks = []
+            if v.get("note"):
+                blocks.append("<div class='tl-sum'>%s</div>" % esc(v["note"]))
+            for s in samples:
+                blocks.append(render_sample(s))
+            ev = ("<details%s><summary>evidence</summary>%s</details>"
+                  % (" open" if verdict == "ignored" else "", "".join(blocks)))
         rows.append(
             "<tr><td><span class='mono'>%s</span> %s%s</td><td>%d</td><td>%s</td>"
             "<td>%d</td><td><span class='pill %s'>%s</span></td></tr>"
@@ -378,7 +421,7 @@ def main():
         "{{CHIEF_COMPLAINT}}": esc((diagnosis or {}).get(
             "chief_complaint", "No model diagnosis pass was recorded.")),
         "{{EXAM_NOTE}}": exam_note,
-        "{{PATIENT_ROWS}}": build_patient(intake, vitals),
+        "{{PATIENT_ROWS}}": build_patient(intake, vitals, backtest),
         "{{VITALS_CARDS}}": build_vitals(vitals, order),
         "{{FILES_TABLE}}": build_files_table(vitals),
         "{{LAB_HTML}}": build_lab(refcheck, diagnosis, order),
