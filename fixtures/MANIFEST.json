@@ -1,0 +1,23 @@
+{
+  "_note": "Gold-standard calibration corpus. These are third-party files under their repos' own licenses, so they are FETCHED ON DEMAND (python3 fixtures/fetch.py) into fixtures/gold/ (gitignored), never committed here. Expected traits recorded at collection time (2026-08-24); files drift — treat as calibration targets, not golden snapshots.",
+  "gold": [
+    {"name": "humanlayer", "url": "https://raw.githubusercontent.com/humanlayer/humanlayer/main/CLAUDE.md",
+     "expect": {"approx_lines": 88, "healthy": true,
+      "why": "canonical WHY/WHAT/HOW from the authors of the defining essay"}},
+    {"name": "ghostty-pointer", "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/main/CLAUDE.md",
+     "expect": {"approx_lines": 1, "pointer": true,
+      "why": "1-line pointer; a doctor that calls this 'too short' fails calibration"}},
+    {"name": "ghostty-agents", "url": "https://raw.githubusercontent.com/ghostty-org/ghostty/main/AGENTS.md",
+     "expect": {"approx_lines": 39, "healthy": true,
+      "why": "minimal extreme for a 60k-star project"}},
+    {"name": "coder-agents", "url": "https://raw.githubusercontent.com/coder/coder/main/AGENTS.md",
+     "expect": {"approx_lines": 85, "healthy": true,
+      "why": "progressive-disclosure routing table; live dead-ref test target"}},
+    {"name": "sentry-agents", "url": "https://raw.githubusercontent.com/getsentry/sentry/master/AGENTS.md",
+     "expect": {"approx_lines": 131, "healthy": true,
+      "why": "pitfalls-not-tutorials at production scale"}},
+    {"name": "anthropic-cookbook", "url": "https://raw.githubusercontent.com/anthropics/anthropic-cookbook/main/CLAUDE.md",
+     "expect": {"approx_lines": 111, "healthy": true,
+      "why": "first-party Anthropic dogfood"}}
+  ]
+}

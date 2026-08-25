@@ -1,5 +1,6 @@
 {
   "name": "claude-md-doctor",
+  "description": "A checkup for your agent instruction files: CLAUDE.md/AGENTS.md vitals, dead references, drifted claims, and a session-history rule-adherence backtest — reported doctor-style with cited evidence.",
   "owner": {
     "name": "Tristan Chen"
   },

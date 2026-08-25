@@ -4,7 +4,7 @@ description: Give this repo's CLAUDE.md / AGENTS.md a checkup — size vitals vs
 argument-hint: "[repo path] [--include-user]"
 ---
 
-# CLAUDE.md Doctor — exam procedure (v0.1: static exam)
+# CLAUDE.md Doctor — exam procedure (v0.2: static exam + session backtest)
 
 You are running a checkup on this repository's agent-instruction files. The
 deterministic work lives in scripts; your job is the judgment between them.
@@ -32,7 +32,11 @@ skill needs Python 3.9+ (stdlib only, nothing to install).
 Then read `WORK/intake.json` (it is small). Note for later judgment:
 - Is the project CLAUDE.md a **pointer** (`is_pointer`) to AGENTS.md? That is
   the healthy, officially-recommended pattern — the target is the patient.
-  Never diagnose a pointer file as "too short."
+  Never diagnose a pointer file as "too short." Check `pointer_style`:
+  `symlink` and `import` work; **`bare-text` is a broken pointer** — a regular
+  file containing just `AGENTS.md` without `@` means Claude Code never loads
+  the target. That is a critical diagnosis with a one-character fix (`@`),
+  unless you are examining a raw-fetched copy where symlinks flatten to text.
 - Ancestor and user-scope files are context the session loads but the repo
   can't fix — mention them, don't prescribe changes to them unless asked.
 - If NO memory files exist at all, stop and report that: the prescription is
@@ -78,7 +82,59 @@ Read `WORK/refcheck.json`. Your judgment passes:
    the user asked. Record each as `verified` / `drifted` / `unverified` with a
    one-line detail — `unverified` is an honest answer for anything expensive.
 
-## Stage 4 — diagnosis (your judgment, written to a file)
+## Stage 4 — history backtest
+
+Skip this stage only if intake found no session directory (`sessions.dir`
+null) — and then say so in chat; the report's History section will state it.
+
+### 4a — condense the transcripts
+
+    python3 SCRIPTS/sessions.py --work WORK
+
+### 4b — decompose the memory files into a rulebook (your judgment)
+
+Write `WORK/rulebook.json` (schema documented at the top of `backtest.py`).
+Guidance:
+- Only **mechanically checkable** rules get matchers in this version: bans and
+  requirements visible in Bash commands or Edit/Write content ("never import
+  X", "never hardcode a colour", "don't add an ESLint config"), and
+  finish-ordering rules ("run `pnpm verify` before you finish") via
+  `ordering`. Semantic rules ("keep components small in spirit") are judged in
+  diagnoses, not matchers — do not force a regex onto them.
+- For edit/write events the matchable text is `PATH: <file_path>` on the first
+  line followed by the (truncated) new content — anchor path-based rules on
+  `^PATH: .*…` and content rules on the body.
+- Write **conservative** regexes (prefer false negatives over false
+  positives), use `scope.paths` / `scope.exclude_paths` to confine
+  file-scoped rules, and date each rule with `introduced` from
+  `git log --follow --format=%aI -- <file>` when the file's history makes
+  that cheap — sessions that ended before a rule existed must not count
+  against adherence.
+
+### 4c — run the engine
+
+    python3 SCRIPTS/backtest.py --work WORK
+
+### 4d — sample-verify (MANDATORY — matchers have bugs)
+
+Read `WORK/backtest.json`. For EVERY rule with fires, read its sample
+excerpts and confirm each is a true positive. A matcher with any false
+positive gets fixed in `rulebook.json` and the engine re-run — this loop is
+cheap and it is the whole reason the results can be trusted. Only when every
+sampled fire is confirmed, set `"verified": true` in `backtest.json`
+(edit the file) — the report shows a "provisional" banner otherwise.
+Then record per-rule verdicts in `diagnosis.json` under `rule_verdicts`:
+
+```json
+"rule_verdicts": {
+  "R1": {"verdict": "healthy|ignored|mixed|inert", "note": "one line of judgment"}
+}
+```
+
+`inert` (zero opportunities in the window) is a finding, not a failure —
+say what it means: the rule cost context in every session and never came up.
+
+## Stage 5 — diagnosis (your judgment, written to a file)
 
 Write `WORK/diagnosis.json`:
 

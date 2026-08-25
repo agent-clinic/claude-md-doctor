@@ -92,20 +92,37 @@ def apply_excludes(files, patterns):
 
 
 def detect_pointer(rec):
-    """A CLAUDE.md that is a symlink or whose effective content is only
-    @imports (the officially recommended AGENTS.md pattern) is a healthy
-    pointer — the patient is the target."""
+    """A CLAUDE.md that delegates to AGENTS.md is the officially recommended
+    pattern. Three styles exist in the wild:
+      symlink    — works (Claude Code follows it)
+      import     — a bare `@AGENTS.md` file; works (import loads at launch)
+      bare-text  — a regular file containing just `AGENTS.md` with no `@`:
+                   looks like a pointer but the target NEVER loads. Broken.
+                   (Caveat: raw fetches of symlinks also look like this.)
+    """
+    rec["is_pointer"], rec["pointer_style"], rec["pointer_targets"] = False, None, []
     if rec["is_symlink"]:
-        rec["is_pointer"] = True
-        rec["pointer_targets"] = [rec["symlink_target"]]
+        rec.update(is_pointer=True, pointer_style="symlink",
+                   pointer_targets=[rec["symlink_target"]])
         return
     text = read_text(rec["path"]) or ""
     clean, _ = strip_html_comments(text)
     meaningful = [l.strip() for l in clean.splitlines() if l.strip()]
+    if not meaningful or len(meaningful) > 3:
+        return
     imports = [l for l in meaningful if re.fullmatch(r"@\S+", l)]
-    rec["is_pointer"] = bool(meaningful) and len(meaningful) <= 3 and len(imports) >= 1 \
-        and all(re.fullmatch(r"@\S+", l) or l.startswith("#") for l in meaningful)
-    rec["pointer_targets"] = [resolve_ref(l[1:], rec["path"]) for l in imports] if rec["is_pointer"] else []
+    if imports and all(re.fullmatch(r"@\S+", l) or l.startswith("#")
+                       for l in meaningful):
+        rec.update(is_pointer=True, pointer_style="import",
+                   pointer_targets=[resolve_ref(l[1:], rec["path"])
+                                    for l in imports])
+        return
+    if len(meaningful) == 1 and re.fullmatch(r"[A-Za-z0-9_./-]+\.md",
+                                             meaningful[0]):
+        target = resolve_ref(meaningful[0], rec["path"])
+        if os.path.isfile(target):
+            rec.update(is_pointer=True, pointer_style="bare-text",
+                       pointer_targets=[target])
 
 
 def sessions_dir_for(repo):

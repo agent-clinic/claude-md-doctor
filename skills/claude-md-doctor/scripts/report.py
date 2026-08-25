@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.1.3"
+VERSION = "0.2.0"
 
 HEART_RECTS = ('<rect x="2" y="0" width="4" height="2"/><rect x="8" y="0" width="4" height="2"/>'
                '<rect x="0" y="2" width="14" height="4"/><rect x="2" y="6" width="10" height="2"/>'
@@ -229,6 +229,65 @@ def build_lab(refcheck, diagnosis, order):
     return "\n".join(parts)
 
 
+VERDICT_PILL = {"healthy": "p-ok", "ignored": "p-crit", "mixed": "p-warn",
+                "inert": "p-info", "unverified": "p-info"}
+
+
+def build_history(backtest, diagnosis, order, fallback_note):
+    if not backtest:
+        return "<p class='sub'>%s</p>" % esc(fallback_note)
+    w = backtest.get("window", {})
+    parts = []
+    if not backtest.get("verified"):
+        parts.append("<div class='note'>Backtest ran but its samples were not "
+                     "verified — matcher results below are provisional.</div>")
+    parts.append(
+        "<p class='sub'>Replayed every rule over <b>%s session(s)</b> — %s tool "
+        "calls, %s → %s (%s stub sessions skipped). %s.%s</p>"
+        % (w.get("sessions_replayed", 0), w.get("total_tool_calls", 0),
+           esc((w.get("from") or "")[:10]), esc((w.get("to") or "")[:10]),
+           w.get("stub_sessions_skipped", 0),
+           esc(w.get("machine_note", "")), cite(["mcmillan", "sysbench"], order)))
+    verdicts = (diagnosis or {}).get("rule_verdicts", {})
+    rows = ["<tr><th>Rule</th><th>Opportunities</th><th>Compliance</th>"
+            "<th>Violations</th><th>Verdict</th></tr>"]
+    depth_totals = {"early": 0, "mid": 0, "late": 0}
+    for rid, st in (backtest.get("per_rule") or {}).items():
+        for k in depth_totals:
+            depth_totals[k] += st["violations_by_depth"].get(k, 0)
+        v = verdicts.get(rid, {})
+        verdict = v.get("verdict") or (
+            "inert" if st["opportunities"] == 0 else
+            "healthy" if st["violations"] == 0 else
+            "ignored" if st["compliances"] == 0 else "mixed")
+        decided = st["compliances"] + st["violations"]
+        comp = ("%d%%" % round(100.0 * st["compliances"] / decided)) if decided else "—"
+        ev = ""
+        samples = st["samples"]["violations"] + st["samples"]["compliances"]
+        if samples or v.get("note"):
+            lines = ([v["note"]] if v.get("note") else []) + [
+                "%s (turn %s): %s" % (s.get("session", "")[:8],
+                                      s.get("turn", "?"),
+                                      s.get("excerpt") or s.get("note", ""))
+                for s in samples]
+            ev = ("<details><summary>evidence</summary><pre>%s</pre></details>"
+                  % esc("\n".join(lines)))
+        rows.append(
+            "<tr><td><span class='mono'>%s</span> %s%s</td><td>%d</td><td>%s</td>"
+            "<td>%d</td><td><span class='pill %s'>%s</span></td></tr>"
+            % (esc(rid), esc(st["text"][:90]), ev, st["opportunities"], comp,
+               st["violations"], VERDICT_PILL.get(verdict, "p-info"),
+               esc(verdict)))
+    parts.append("<div class='tablebox'><table>%s</table></div>" % "".join(rows))
+    total_v = sum(depth_totals.values())
+    if total_v:
+        parts.append("<p class='sub'>Violations by conversation depth: "
+                     "%d early (≤3 turns) · %d mid (4–8) · %d late (>8)%s.</p>"
+                     % (depth_totals["early"], depth_totals["mid"],
+                        depth_totals["late"], cite(["sysbench"], order)))
+    return "\n".join(parts)
+
+
 def build_diagnoses(diagnosis, order):
     out = []
     for d in (diagnosis or {}).get("diagnoses", []):
@@ -300,10 +359,11 @@ def main():
     tpl_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             "..", "templates", "report.html")
     tpl = open(tpl_path, encoding="utf-8").read()
+    backtest = load_json(os.path.join(work, "backtest.json"))
     grade = (diagnosis or {}).get("grade", "—")
-    history = (diagnosis or {}).get("history_note") or (
-        "Not examined in v0.1. %d session transcript(s) were located for this "
-        "repo — the v0.2 backtest will replay each rule against them."
+    history_fallback = (diagnosis or {}).get("history_note") or (
+        "Not examined in this run. %d session transcript(s) were located for "
+        "this repo — the backtest replays each rule against them."
         % intake.get("sessions", {}).get("session_files", 0))
     followup = "".join("<li><span class='pe'>🩺</span><div>%s</div></li>" % esc(f)
                        for f in (diagnosis or {}).get("followup", []))
@@ -322,7 +382,8 @@ def main():
         "{{VITALS_CARDS}}": build_vitals(vitals, order),
         "{{FILES_TABLE}}": build_files_table(vitals),
         "{{LAB_HTML}}": build_lab(refcheck, diagnosis, order),
-        "{{HISTORY_HTML}}": "<p class='sub'>%s</p>" % esc(history),
+        "{{HISTORY_HTML}}": build_history(backtest, diagnosis, order,
+                                          history_fallback),
         "{{DIAGNOSES_HTML}}": build_diagnoses(diagnosis, order),
         "{{PRESCRIPTIONS_HTML}}": build_prescriptions(diagnosis, order),
         "{{FOLLOWUP_HTML}}": "<ul class='rxlist'>%s</ul>" % (
@@ -347,7 +408,7 @@ def main():
                "generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                "grade": grade, "vitals": vitals, "refcheck_stats":
                (refcheck or {}).get("stats"), "diagnosis": diagnosis,
-               "incomplete_stages": missing})
+               "backtest": backtest, "incomplete_stages": missing})
     manifest_add(work, "report", out=out_path, incomplete=missing)
     print("report: wrote %s%s" % (out_path,
           " (INCOMPLETE: missing %s)" % ",".join(missing) if missing else ""))

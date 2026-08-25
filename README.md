@@ -33,15 +33,23 @@ It understands the real memory surface: `CLAUDE.md`, `.claude/CLAUDE.md`,
 `@imports` (depth 4, backtick-aware), `claudeMdExcludes`, ancestor directories —
 and it treats the pointer-to-`AGENTS.md` pattern as healthy, examining the target.
 
-## Coming in v0.2 — the part nobody else does
+## The backtest — the part nobody else does
 
-**The backtest.** Your own Claude Code session transcripts
-(`~/.claude/projects/…`) already record whether past sessions actually followed
-each rule in your CLAUDE.md. v0.2 decomposes the file into rules and replays
-them against that history: which rules are followed, which get ignored, which
-never come up at all — with receipts. Research shows agents silently skip
-mandated steps while outputs still look fine; only behavioral evidence catches
-that.
+Your own Claude Code session transcripts (`~/.claude/projects/…`) already
+record whether past sessions actually followed each rule in your CLAUDE.md.
+The doctor decomposes the file into rules and replays them against that
+history: per rule — opportunities, compliance rate, violations (indexed by
+conversation depth), and a verdict: **healthy / ignored / mixed / inert** —
+with receipts (session + excerpt) behind every number. Matcher fires are
+sample-verified before they count, because matchers have bugs; unverified
+results are banner-labeled provisional. Research shows agents silently skip
+mandated steps while outputs still pass checks; only behavioral evidence
+catches that — and it's free, sitting in your transcript history.
+
+First dogfood result, on this project's own test patient: the file's loudest
+rule ("run verify before you finish. **No exceptions.**") was the one rule
+real sessions broke — 0% compliance where it applied — while 6 of 8
+mechanically-checkable rules never came up at all in a month of history.
 
 ## Install
 
@@ -77,8 +85,11 @@ evidence base, ~30 primary-verified sources.
 
 ## Status
 
-v0.1 (static exam) — working; first reports generated. v0.2 (session backtest)
-is the headline release and under active development. Issues and PRs welcome.
+v0.2 — the full exam works end to end: static checks + session backtest +
+verified report. Tested (`python3 -m unittest discover -s tests`), calibrated
+against real-world gold-standard files (`python3 fixtures/fetch.py`), and
+dogfooded: the first patient went from grade C to B by following its
+prescriptions. Issues and PRs welcome.
 
 ## License
 
