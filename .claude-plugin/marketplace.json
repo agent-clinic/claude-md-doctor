@@ -8,7 +8,7 @@
     {
       "name": "claude-md-doctor",
       "source": "./",
-      "description": "Diagnose the health of a repo's CLAUDE.md / AGENTS.md: size vitals, dead references, stale content, pathology markers — doctor-style HTML report with evidence-cited prescriptions."
+      "description": "Audit and improve a repo's CLAUDE.md / AGENTS.md: size vitals, dead references, stale content — plus a session-history backtest showing which rules get followed, ignored, or never used. Doctor-style HTML report with evidence-cited prescriptions."
     }
   ]
 }

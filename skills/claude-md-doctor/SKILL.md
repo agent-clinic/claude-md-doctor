@@ -1,6 +1,6 @@
 ---
 name: claude-md-doctor
-description: Give this repo's CLAUDE.md / AGENTS.md a checkup — size vitals vs official guidance, dead references, dead commands, stale claims — then backtest every rule against the repo's own Claude Code session history to see which rules were actually followed, ignored, or never used, and produce a doctor-style HTML report with evidence-cited prescriptions. Use when asked to check, diagnose, audit, lint, or "doctor" CLAUDE.md, AGENTS.md, or agent instruction/memory files, or to find out whether CLAUDE.md rules actually work.
+description: Give this repo's CLAUDE.md / AGENTS.md a checkup — size vitals vs official guidance, dead references, dead commands, stale claims — then backtest every rule against the repo's own Claude Code session history to see which rules were actually followed, ignored, or never used, and produce a doctor-style HTML report with evidence-cited prescriptions. Use when asked to check, diagnose, audit, review, improve, optimize, lint, grade, fix, clean up, shorten, or "doctor" CLAUDE.md, AGENTS.md, or agent instruction/memory files, or to find out whether CLAUDE.md rules actually work.
 argument-hint: "[repo path] [--include-user]"
 ---
 

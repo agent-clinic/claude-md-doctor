@@ -122,6 +122,43 @@ catches that — and it's free, sitting in your transcript history.
 Run it on your own repo: the rules you'd bet on being followed are rarely the
 ones that are.
 
+## FAQ
+
+**Why does Claude ignore my CLAUDE.md?**
+Usually one of three causes, and they need different medicine: *defiance*
+(the rule was in context — sometimes literally echoed — and broken anyway),
+*dilution* (the rule drowned late in a heavy session), or *absence* (a
+non-root rule lost to compaction). The research says this is normal, not
+user error: agents violate 57.5% of preference rules even when memory
+retrieves them, and perform about half the steps their own instruction
+files mandate ([docs/RESEARCH.md](docs/RESEARCH.md)). The backtest tells
+you which cause is yours, with the transcript as receipts.
+
+**How do I audit my CLAUDE.md or AGENTS.md?**
+Install the skill (Quickstart above), then ask in any session: *"give my
+CLAUDE.md a checkup"* — audit, review, improve, and lint requests all
+route to the same exam. The report lands in `.claude-md-doctor/report.html`.
+
+**How long should a CLAUDE.md be?**
+The official guidance says *"target under 200 lines per CLAUDE.md file"*
+([memory docs](https://code.claude.com/docs/en/memory)). The doctor
+measures your effective loaded size — imports resolved, fences and
+comments handled — against that number, and estimates what the file costs
+in tokens per session. Length itself is the weakest signal, though; the
+strong causal evidence is about pruning content that doesn't change
+behavior.
+
+**How is this different from `/doctor` or the official claude-md-management plugin?**
+Those score or trim the *file*, statically. This joins the file to your
+*behavior*: it replays every rule against your real session transcripts
+and shows per-rule compliance with cause-of-failure triage. Linters check
+the file; analytics grade your sessions; the backtest is the join.
+
+**Does my session data leave my machine?**
+No. Everything runs locally, stdlib Python only, no telemetry. The share
+card and badge are aggregates-only by construction — never a string from
+your repo or transcripts — and there's a test asserting exactly that.
+
 ## Honesty policy
 
 Every prescription carries an evidence tier — official doc, controlled study,
@@ -129,13 +166,14 @@ corpus study, or plainly-labeled heuristic — and the report states the
 tensions in the research instead of hiding them (e.g., the one factorial
 study found no structural effect of file size in its tested range, while
 content pruning has strong causal backing). See
-[docs/RESEARCH.md](docs/RESEARCH.md) for the full evidence base — 30+
+[docs/RESEARCH.md](docs/RESEARCH.md) for the full evidence base — 40+
 primary-verified sources.
 
 ## Status
 
-v0.3 — the full exam works end to end: static checks + session backtest +
-cause triage + enforcement ladder + verified report. Tested (`python3 -m unittest discover -s tests`), calibrated
+The full exam works end to end: static checks + session backtest + cause
+triage + enforcement compilation + share card/badge + verified report.
+Tested (`python3 -m unittest discover -s tests`), calibrated
 against real-world gold-standard files (`python3 fixtures/fetch.py`), and
 dogfooded on a real repo — including a clean-context validation run, where a
 fresh agent guided only by the skill's own instructions completed every

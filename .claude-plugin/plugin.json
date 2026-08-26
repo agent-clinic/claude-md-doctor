@@ -1,10 +1,20 @@
 {
   "name": "claude-md-doctor",
-  "version": "0.4.3",
-  "description": "Give your CLAUDE.md a checkup: size vitals vs official guidance, dead references, stale content — with a doctor-style HTML report that cites its evidence.",
+  "version": "0.4.4",
+  "description": "Give your CLAUDE.md / AGENTS.md a checkup: size vitals vs official guidance, dead references, drifted claims — plus a backtest of every rule against your own session history showing which rules get followed, ignored, or never used. Doctor-style HTML report with evidence-cited prescriptions. Use it to audit, review, improve, lint, grade, or fix agent instruction files.",
   "author": {
     "name": "Tristan Chen"
   },
   "homepage": "https://github.com/agent-clinic/claude-md-doctor",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "claude-md",
+    "agents-md",
+    "claude-code",
+    "audit",
+    "backtest",
+    "lint",
+    "hooks",
+    "context-engineering"
+  ]
 }
