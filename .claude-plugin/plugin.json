@@ -1,6 +1,6 @@
 {
   "name": "claude-md-doctor",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Give your CLAUDE.md a checkup: size vitals vs official guidance, dead references, stale content — with a doctor-style HTML report that cites its evidence.",
   "author": {
     "name": "Tristan Chen"

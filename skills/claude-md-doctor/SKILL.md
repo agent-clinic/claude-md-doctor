@@ -209,7 +209,10 @@ after it (the obligation re-ripens).
 This writes `WORK/enforcement/` — a PROPOSALS.md dossier per rule, a generic
 guard script, its per-rule config (warn-mode by default; defiance-proven
 rules start at block), and a settings snippet. **Never install any of it
-yourself; never edit the user's `.claude/settings.json`.** Tell the user
+yourself; never edit the user's `.claude/settings.json`.** Goodhart caution
+(citation id `specbench`): a visible pattern-gate can be satisfied without
+honoring the rule — where a rule has a real outcome (tests pass, build
+green), prefer a gate that runs the outcome over one that greps a pattern. Tell the user
 where the proposals live and that they are review-then-arm.
 
 ## Stage 5 — diagnosis (your judgment, written to a file)

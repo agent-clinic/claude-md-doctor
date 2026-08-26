@@ -177,6 +177,11 @@ def main():
         "rule is demonstrably seen (TRACE arXiv:2606.13174: 57.5% violated with",
         "memory access; compiled checks cut violations to 2–38%). Hooks are the",
         "official mechanism for must-happen rules.",
+        "",
+        "Goodhart caution (SpecBench arXiv:2605.21384): a check the agent can",
+        "see can be satisfied without honoring the rule. Where possible, prefer",
+        "gates that verify real outcomes (run the actual tests) over pattern",
+        "proxies, and expect pattern-gates to need occasional judge audits.",
         "", "---", "",
     ]
     body = [dossier(r, per_rule.get(r["id"])) for r in rulebook["rules"]]

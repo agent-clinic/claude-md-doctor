@@ -298,6 +298,10 @@ faster milestones) and transfer. → The lineage of the whole skills mechanism.
 | Structural scans vs judged skill value | Spearman ρ = 0.14 | ACES 2608.20614 |
 | Preference violations despite memory (Mem0) | 57.5% | TRACE 2606.13174 |
 | Against-prior compliance penalty | 3.6–7.4pp (mean 5.81) | Harness-IF 2608.11727 |
+| Conflict-resolution accuracy (best OSS model) | 48% | IHEval 2502.08745 |
+| Agent-instruction text with ≥1 quality smell | 97.1% | MCP-smelly 2602.14878 |
+| Cost of "fixing" instruction text | +5.85pp success, +67% steps | MCP-smelly 2602.14878 |
+| Visible-check vs holdout gaming gap | ~28pp per 10× code size | SpecBench 2605.21384 |
 | Surface precedence | system ≈ project files ≈ user > tool/skill descriptions | Harness-IF 2608.11727 |
 | Compiled-enforcement payoff | 100% → 2.0% (OOD) / 37.6% (ID) violations | TRACE 2606.13174 |
 | Skills with zero/negative lift | ~27% (72.8% positive) | ACES 2608.20614 |
@@ -345,6 +349,56 @@ agent reads; 12 frontier models. (Abstract-level verification.)
   prescription gets a rider: it is for *procedures* (load on invocation), never
   for *constraints* — a constraint demoted into a skill description measurably
   loses precedence. CLAUDE.md's high precedence as a "project file" is validated.
+
+**The instruction-hierarchy pair** (via Harness-IF's citation graph; abstract-verified):
+- **Wallace et al. (OpenAI), "The Instruction Hierarchy"** (arXiv:2404.13208) —
+  models are *trained* to prioritize privileged instructions and ignore
+  lower-ranked ones. This is the mechanism behind against-prior failures: a
+  project-file rule fighting trained-in behavior starts at a disadvantage —
+  the conceptual anchor for "this rule needs a hook because the prior will win."
+- **IHEval** (NAACL 2025, arXiv:2502.08745) — 3,538 examples across
+  system/user/history/tool priority levels: all models drop sharply when
+  instructions **conflict** vs plain IF; the best open-source model resolves
+  conflicts at only **48%**. → The evidence behind the `contradictory`
+  diagnosis: conflicting rules aren't just untidy, they measurably degrade
+  compliance — and which rule wins is not reliably the one you intended.
+  (Harness-IF's complement: IHEval tests a *prescribed* hierarchy; Harness-IF
+  measures precedence empirically.)
+
+**InFoBench** (arXiv:2401.03601) — DRFR: decompose complex instructions into
+simple yes/no criteria and score each (500 instructions → 2,250 criteria);
+GPT-4 shown reliable as the per-criterion judge. → The citable origin of
+decompose-then-verify — our split-before-classify + per-rule backtest scoring
+in one paper. Kin: **ComplexBench** (2407.03978, constraint *composition*
+types) and **CFBench** (2408.01122, constraint taxonomy) for compound-rule
+splitting.
+
+**The 2026 harness-audit cluster** (via the same graph):
+- **"MCP Tool Descriptions Are Smelly!"** (arXiv:2602.14878) — 856 tools
+  audited with a 6-component smell rubric: **97.1% have ≥1 smell**; fixing
+  descriptions improved success by median **+5.85pp but +67% execution
+  steps**, with regressions in 17% of cases. The closest published analog to
+  this project (a linter for agent-facing instruction text with measured
+  behavioral impact) — and a warning that prescriptions have token/step costs.
+- **OpenSkillEval** (arXiv:2605.23657) — audits 30 community skills: skill
+  availability ≠ usage; many popular skills **don't outperform base agents**.
+  Null-effect artifacts are common → empirical precedent for redundancy
+  detection (pairs with ACES's 27% zero/negative lift).
+- **ProcCtrlBench** (arXiv:2605.20251) — trajectory-level evaluation:
+  normalize heterogeneous logs, apply an 11-type execution-defect ontology,
+  score process not outcomes. The closest methodological sibling to our
+  condense-then-backtest architecture.
+- **SpecBench** (arXiv:2605.21384) — reward hacking measured as the gap
+  between visible tests and held-out tests: every frontier agent saturates
+  the visible suite while the holdout gap grows **~28pp per 10× code size**.
+  → **Goodhart warning for enforcement compilation**: a hook the agent can
+  see can be satisfied without honoring the rule — prefer gates that run
+  real outcomes (the actual test suite) over pattern proxies, and keep
+  matchers out of the agent's sight where possible.
+- Supplementary decay numbers: **Multi-IF** (2410.15553, per-turn decay
+  0.877→0.707 by turn 3), **CodeIF-Bench** (2503.22688 — repo context and
+  growing history degrade coding IF), **LIFBench** (2411.07037 — judge-free
+  rubric scoring of IF stability across long contexts).
 
 **IFEval** (Zhou et al., arXiv:2311.07911) — 25 *verifiable* instruction types; the
 template for our mechanical-vs-semantic rule split. **IFEval++/reliable@k**
