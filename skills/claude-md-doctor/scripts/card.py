@@ -126,7 +126,9 @@ def build_card(name, grade, note, stats, class_counts):
     title = ('<text x="128" y="88" font-size="26" font-weight="700" fill="%s" '
              'font-family="%s">%s</text>' % (PAL["ink"], FONT, esc(name))
              if name else "")
-    return """<svg xmlns="http://www.w3.org/2000/svg" width="800" height="418" viewBox="0 0 800 418">
+    # viewBox only (no fixed width/height): scales to any viewer instead of
+    # clipping in containers narrower than 800px
+    return """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 418">
 <rect width="800" height="418" fill="%(bg)s"/>
 <rect x="14" y="14" width="772" height="390" rx="16" fill="%(card)s" stroke="%(line)s"/>
 %(bot)s
