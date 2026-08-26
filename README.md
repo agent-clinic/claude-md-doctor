@@ -118,8 +118,12 @@ primary-verified sources.
 v0.3 — the full exam works end to end: static checks + session backtest +
 cause triage + enforcement ladder + verified report. Tested (`python3 -m unittest discover -s tests`), calibrated
 against real-world gold-standard files (`python3 fixtures/fetch.py`), and
-dogfooded on a real repo. Part of [agent-clinic](https://github.com/agent-clinic) —
-checkups for your agent's config files. Issues and PRs welcome.
+dogfooded on a real repo — including a clean-context validation run, where a
+fresh agent guided only by the skill's own instructions completed every
+stage, caught a matcher bug via the built-in verification loop, and found
+two real problems the authors had missed. Part of
+[agent-clinic](https://github.com/agent-clinic) — checkups for your agent's
+config files. Issues and PRs welcome.
 
 ## License
 
