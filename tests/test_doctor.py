@@ -295,6 +295,20 @@ class TestBacktest(ToyRepo):
         self.assertNotIn(os.path.basename(self.repo), anon)
 
 
+class TestVersionSync(unittest.TestCase):
+    def test_report_version_matches_plugin_manifest(self):
+        # The report footer stamps report.VERSION; the marketplace ships
+        # plugin.json's version. They drifted once (0.3.5 vs 0.4.3) — keep
+        # them locked. Skip outside the repo (bare installs have no manifest).
+        manifest = os.path.join(ROOT, ".claude-plugin", "plugin.json")
+        if not os.path.isfile(manifest):
+            self.skipTest("no plugin manifest (bare install)")
+        import report
+        with open(manifest) as f:
+            plugin_version = json.load(f)["version"]
+        self.assertEqual(report.VERSION, plugin_version)
+
+
 class TestReport(ToyRepo):
     def test_report_renders_and_discloses_incomplete(self):
         run("intake.py", "--repo", self.repo, "--work", self.work)
