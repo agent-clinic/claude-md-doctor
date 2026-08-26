@@ -42,7 +42,11 @@ and API knowledge are never forced into rule classes) gets exactly one class:
    frontend" becomes "`func.tsx` may only be imported from
    `src/frontend/**`", which a dependency-boundary linter enforces in batch.
 
-**Fields that matter**: `current_layer` records enforcement that *already
+**Fields that matter**: `against_prior` records whether the rule opposes what
+a frontier model would do unprompted — models comply 3.6–7.4pp worse on
+against-prior rules (Harness-IF), so high compliance on a *with-prior* rule
+may be coincidence rather than obedience: a redundancy candidate, not a
+success story. `current_layer` records enforcement that *already
 exists* (a discipline test, a lint rule, a CI check — in mature repos this is
 the most common finding: the prose is a healthy pointer to an existing law);
 `adjudication: judge` marks soft rules ("unless requested", "where possible")

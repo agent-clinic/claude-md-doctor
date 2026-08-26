@@ -297,6 +297,8 @@ faster milestones) and transfer. → The lineage of the whole skills mechanism.
 | Prose-skill step adherence | 56% (→68% newer gen); outputs still pass | SIGIL 2607.27309 |
 | Structural scans vs judged skill value | Spearman ρ = 0.14 | ACES 2608.20614 |
 | Preference violations despite memory (Mem0) | 57.5% | TRACE 2606.13174 |
+| Against-prior compliance penalty | 3.6–7.4pp (mean 5.81) | Harness-IF 2608.11727 |
+| Surface precedence | system ≈ project files ≈ user > tool/skill descriptions | Harness-IF 2608.11727 |
 | Compiled-enforcement payoff | 100% → 2.0% (OOD) / 37.6% (ID) violations | TRACE 2606.13174 |
 | Skills with zero/negative lift | ~27% (72.8% positive) | ACES 2608.20614 |
 | Script-compiled skill adherence | 86%, model-independent, 0.58× tokens | SIGIL 2607.27309 |
@@ -323,6 +325,26 @@ from 50 real agentic applications, avg 11.9 constraints each.
   time; constraint-level (CSR) 59.8. **ISR ≈ 0 past 6,000 words** of instruction.
 - → Sets the health-score ceiling honestly (perfect adherence is not on the table even
   for a perfect file) and adds a hard size cliff to vitals.
+
+**Harness-IF** (Huang et al., arXiv:2608.11727, Aug 2026). 60 multi-turn coding
+items from a 642-rule library, rules placed across the five surfaces a deployed
+agent reads; 12 frontier models. (Abstract-level verification.)
+- **Compliance vs coincidence**: "when a coding agent obeys a rule, it may simply
+  have been going to do that anyway." Their Against-Prior Accuracy scores only
+  rules opposing unprompted defaults (verified by re-running with the rule
+  withheld): accuracy 72.1–85.9% but AP-Acc 66.1–78.6% — **every model worse on
+  against-prior rules by 3.6–7.4 points (mean 5.81)**; aggregate scores overstate
+  compliance by a model-specific margin.
+- **Surface precedence does not follow prompt depth**: system prompts, project
+  files, and user instructions rank **ahead of tool and skill descriptions**.
+- → Two design consequences: (1) the backtest's `healthy` verdict splits —
+  rules judged `against_prior: no` that show high compliance are
+  **compliant-but-coincidental** → redundancy candidates (the deletion test
+  applies), while against-prior compliance means the rule earns its cost; this
+  turns the `redundant` diagnosis from vibes into method. (2) The move-to-skill
+  prescription gets a rider: it is for *procedures* (load on invocation), never
+  for *constraints* — a constraint demoted into a skill description measurably
+  loses precedence. CLAUDE.md's high precedence as a "project file" is validated.
 
 **IFEval** (Zhou et al., arXiv:2311.07911) — 25 *verifiable* instruction types; the
 template for our mechanical-vs-semantic rule split. **IFEval++/reliable@k**

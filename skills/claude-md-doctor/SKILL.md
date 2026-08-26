@@ -136,7 +136,14 @@ Guidance:
   can't govern. Give every classified
   rule an `echo_regex` of its distinctive tokens (for proven-defiance
   detection) and an `origin` (root/nested/rules — only non-root rules can be
-  truly absent after compaction).
+  truly absent after compaction). Also judge `against_prior: true|false` in
+  the enforcement block: would a frontier model do this by default WITHOUT
+  the rule? A with-prior rule showing high compliance may be coincidence,
+  not obedience (citation id `harness-if`) — flag it as a redundancy
+  candidate in diagnosis rather than celebrating it as healthy. And when
+  prescribing move-to-skill: that move is for *procedures* only — a
+  *constraint* demoted into a skill description measurably loses precedence
+  (project files outrank tool/skill descriptions).
 
 Engine semantics you need (so you don't reverse-engineer them):
 - **"Opportunities"** = matcher fires (violation+compliance+context hits) for
