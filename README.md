@@ -88,13 +88,29 @@ history — per rule, a verdict with receipts:
 
 Behind every number: matched excerpts, and for finish-ordering rules a
 session-timeline strip showing exactly what ran after the last edit.
-Every violation is **triaged by cause** — proven defiance (the agent echoed
-the rule, then broke it), fresh-context defiance, context dilution, or
-post-compaction absence — and the cause picks the medicine: each checkable
-rule gets an **enforcement class** (hook / linter / judge) and an arming
-recommendation (reminder → warn → block), with generated **review-then-arm
-hook proposals** written to the exam folder. Nothing is ever installed
-automatically. Matcher fires are
+Two ideas drive the verdicts ([full taxonomy](docs/TAXONOMY.md)). Every rule
+gets an **enforcement class** — the cheapest reliable detector:
+
+| Class | Detector | Binds |
+|---|---|---|
+| `hook` | gate over tool calls (commands, edits, orderings) — *prevents* | the agent |
+| `linter`/`test` | static analysis over the code itself | every agent **and** every human |
+| `judge` | LLM audit, post-hoc, with a stated reliability ceiling | audit only |
+
+~70% of real-world directives land in the first two — laws waiting to be
+passed. And every violation is **triaged by cause**, because the cause picks
+the medicine:
+
+| Cause | What happened | Medicine |
+|---|---|---|
+| defiance-proven | the agent *echoed the rule*, then broke it | block-mode gate — the reminder already lost |
+| defiance | violated in fresh context | warn-hook, then block |
+| dilution | drowned late in a heavy session | slim the file, move the rule to point-of-use |
+| absence | non-root rule lost to compaction | re-inject; never block |
+
+The arming ladder (reminder → warn → block) is set per rule from its own
+violation forensics, and **review-then-arm hook proposals** are written to
+the exam folder — nothing is ever installed automatically. Matcher fires are
 sample-verified before they count, because matchers have bugs; unverified
 results are banner-labeled provisional. Research shows agents silently skip
 mandated steps while outputs still pass checks; only behavioral evidence
