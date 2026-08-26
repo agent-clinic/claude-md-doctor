@@ -10,7 +10,75 @@ capability) · `consensus` (practitioner writing, no controlled test) · `heuris
 (ours; no external backing — labeled as such in the report).
 
 Verification status: every entry below was primary-source-verified (URL fetched directly)
-on 2026-08-24 unless marked otherwise.
+on 2026-08-24/25 unless marked otherwise.
+
+## The index — every source in one line
+
+| Source | What it says | How the doctor uses it |
+|---|---|---|
+| [Claude Code memory doc](https://code.claude.com/docs/en/memory) | "Target under 200 lines per CLAUDE.md file"; 4 MiB hard skip; comments stripped; root file re-injected post-compact | Size vitals thresholds; intake loader semantics; absence-cause scoping |
+| [Claude Code best practices](https://code.claude.com/docs/en/best-practices) | Deletion test; "bloated files cause Claude to ignore your instructions"; sparse emphasis; hooks for must-happen rules | Prescriptions, emphasis-density check, move-to-hook advice |
+| [Claude Code troubleshooting](https://code.claude.com/docs/en/troubleshooting) | Startup warning at 40,000 chars of memory | Combined-surface vital |
+| [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | Attention budget; "right altitude" of instructions; just-in-time retrieval over pre-loading | Theoretical frame for bloat/vague diagnoses; pointer-pattern endorsement |
+| [Agent Skills post](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) | Progressive disclosure; name/description are the trigger | Future SKILL.md checks; move-to-skill prescription |
+| [Context management post](https://claude.com/blog/context-management) | Memory tool +39% success, −84% tokens; store non-rederivable state | MEMORY.md content rubric |
+| [Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) | Description wording alone moved SWE-bench SOTA | Skill/tool description quality checks |
+| [Multi-agent system post](https://www.anthropic.com/engineering/built-multi-agent-research-system) | Rewritten tool descriptions → 40% task-time decrease | Same — descriptions are load-bearing |
+| [ETH "Evaluating AGENTS.md"](https://arxiv.org/abs/2602.11988) | Context files cost +20–23% with no significant success lift; explicit directives ARE followed | Core stance: keep directives, cut narrative; /init-boilerplate severity |
+| [McMillan factorial](https://arxiv.org/abs/2605.10039) | 1,650 sessions: no structural effect of size/position; ~5.6%/function in-session decay | Structure-caution labels; depth-indexed cause triage |
+| [Khatri ablation](https://arxiv.org/abs/2607.27250) | Context strategies gave no correctness improvement (≤10–15pp bound) | Corroborates derivable-content pruning |
+| [Probe-and-Refine](https://arxiv.org/abs/2606.20512) | Iteratively refined guidance 33.0% vs 25.5% unguided | Files are improvable — the prescriptions half |
+| [ZORO](https://arxiv.org/abs/2604.15625) | Rules files "remain passive: not apparent when rules are followed" | The product's raison d'être |
+| [RepoComplianceBench](https://arxiv.org/abs/2607.26819) | Agents almost never retrieve contribution rules | Trajectory-judged compliance precedent |
+| [OctoBench](https://arxiv.org/abs/2601.10343) | Systematic gap between task-solving and scaffold compliance | Backtest scores adherence separately from success |
+| [Agent READMEs](https://arxiv.org/abs/2511.12884) | 2,303 files: tests 75.9%/impl 70.8%/arch 68.1%; churn without pruning | "Your file vs the wild" baseline; accretion diagnosis |
+| [Claude Code manifests study](https://arxiv.org/abs/2509.14744) | 253 CLAUDE.mds: shallow hierarchies, command-dominated | CLAUDE.md structure norms |
+| [Jiang & Nam cursor rules](https://arxiv.org/abs/2512.18925) | Five-theme taxonomy; ~28.7% duplicated lines across rules files | Rule-taxonomy ancestor; cross-file duplication check |
+| [XTrace surface-bloat post](https://xtrace.ai/blog/too-many-claude-skill-files) | 60 files ≈ 64k standing tokens; consolidate → router → invariants | Combined-surface diagnosis + escalating ladder |
+| [Unblocked 7-step audit](https://getunblocked.com/blog/audit-fix-bloated-claude-md/) | The manual audit process | What the skill automates |
+| [IFScale](https://arxiv.org/abs/2507.11538) | 98.4% adherence @100 rules → 68.9% @500; errors become silent omissions | Rule-count vital; why only a backtest catches violations |
+| [AGENTIF](https://arxiv.org/abs/2505.16944) | Best model satisfies all constraints 27.2%; ≈0 past 6,000 words | Honest score ceiling; size cliff |
+| [IFEval](https://arxiv.org/abs/2311.07911) | 25 verifiable instruction types | Template for mechanical-vs-judge split |
+| [IFEval++](https://arxiv.org/abs/2512.14754) | Up to 61.8% drops under paraphrase | `vague` diagnosis: one-phrasing rules aren't reliable |
+| [SysBench](https://arxiv.org/abs/2408.10943) | System-message adherence −12.8pp/turn | Depth-indexed dilution triage |
+| [Laban multi-turn](https://arxiv.org/abs/2505.06120) | 39% average multi-turn drop | Dilution corroboration on modern models |
+| [Harness-IF](https://arxiv.org/abs/2608.11727) | Against-prior penalty 3.6–7.4pp; project files outrank skill/tool descriptions | `against_prior` field; move-to-skill precedence rider |
+| [IHEval](https://arxiv.org/abs/2502.08745) | Conflicting instructions: best OSS model resolves at 48% | `contradictory` diagnosis evidence |
+| [Instruction Hierarchy (OpenAI)](https://arxiv.org/abs/2404.13208) | Precedence is trained in | Against-prior mechanism; why some rules need hooks |
+| [InFoBench](https://arxiv.org/abs/2401.03601) | DRFR: decompose into yes/no criteria, judge each | The backtest's unit of analysis; split-before-classify |
+| [ComplexBench](https://arxiv.org/abs/2407.03978) | Constraint composition types | Compound-rule splitting |
+| [CFBench](https://arxiv.org/abs/2408.01122) | Constraint taxonomy, requirement prioritization | Rule classification |
+| [Multi-IF](https://arxiv.org/abs/2410.15553) | Per-turn decay 0.877→0.707 by turn 3 | Depth evidence |
+| [CodeIF-Bench](https://arxiv.org/abs/2503.22688) | Repo context + interaction history degrade coding IF | Coding-specific dilution |
+| [LIFBench](https://arxiv.org/abs/2411.07037) | Judge-free rubric scoring of IF stability in long contexts | Dilution measurement; judge-free verification |
+| [Lost in the Middle](https://arxiv.org/abs/2307.03172) | U-shaped position curve | Rule-placement advice (consensus tier) |
+| [Chroma Context Rot](https://www.trychroma.com/research/context-rot) | 18 models degrade with length; 300-token focus beats 113k context | Every irrelevant line is haystack |
+| [Levy padding](https://arxiv.org/abs/2402.14848) | 0.92 → 0.68 accuracy at +3k tokens; starts ~500 | The sharpest "bloat is not free" number |
+| [LongLLMLingua](https://arxiv.org/abs/2310.06839) | +21.4% at ~4× compression | Cut-decoration prescription |
+| [Attention is Case-Sensitive](https://arxiv.org/abs/2608.03711) | Caps +1.85pp; ~zero on reasoning models | Emphasis-density check, honestly tiered |
+| [Sclar formatting](https://arxiv.org/abs/2310.11324) | Format changes swing accuracy up to 76pts | Formatting is behaviorally load-bearing |
+| [He formatting](https://arxiv.org/abs/2411.10541) | Template choice swings GPT-3.5 up to 40% | Same |
+| [SIGIL](https://arxiv.org/abs/2607.27309) | Prose skills: 56% step adherence; compiled: 86% at 0.58× tokens | Behavior-not-outcomes backtest; scripts-carry-procedure; ladder |
+| [SkillSmith](https://arxiv.org/abs/2605.15215) | Skill-compilation sibling | Neighborhood reference |
+| [TRACE](https://arxiv.org/abs/2606.13174) | 57.5% violated with memory access; compiled checks → 2–38% | Compilation payoff; proven-defiance basis (rule echoed, then broken) |
+| [Agent Workflow Memory](https://arxiv.org/abs/2409.07429) | Selectively-injected workflows +51.1% on WebArena | Move-procedures-to-skills prescription |
+| [ASI](https://arxiv.org/abs/2504.06821) | Executable skills beat text skills +11.3% | Prefer script-carrying skills |
+| [Voyager](https://arxiv.org/abs/2305.16291) | The original curated skill library | Skills-mechanism lineage |
+| [Hsieh tool docs](https://arxiv.org/abs/2308.00675) | Docs alone match few-shot demos | Description before examples |
+| [Model-generated skills](https://arxiv.org/abs/2605.23899) | Non-trivial negative transfer — bad skills hurt | Trigger-precision over presence |
+| [ACES](https://arxiv.org/abs/2608.20614) | Structural scans ρ=0.14 vs judged value; ~27% skills zero/negative lift | Static-is-weak-evidence; measure lift, not presence |
+| [MCP-smelly](https://arxiv.org/abs/2602.14878) | 97.1% of tool descriptions have smells; fixes +5.85pp but +67% steps | Closest analog; prescriptions-have-costs warning |
+| [OpenSkillEval](https://arxiv.org/abs/2605.23657) | Many popular skills don't beat base agents | Redundancy/null-effect precedent |
+| [ProcCtrlBench](https://arxiv.org/abs/2605.20251) | Trajectory normalization + 11-type defect ontology | Condense-then-backtest methodology sibling |
+| [SpecBench](https://arxiv.org/abs/2605.21384) | Visible-check gaming: ~28pp holdout gap per 10× code size | Goodhart caution on hook compilation — prefer outcome-gates |
+| [MemGPT](https://arxiv.org/abs/2310.08560) | Small core memory + paged archival storage | MEMORY.md index+topic-files architecture |
+| [Reflexion](https://arxiv.org/abs/2303.11366) | Verbal failure-lessons improve later trials | Reward causal failure context in memories |
+| [Generative Agents](https://arxiv.org/abs/2304.03442) | Reflection/consolidation beats append-only logs | Memory-consolidation precedent |
+| [Memp](https://arxiv.org/abs/2508.06433) | Procedural memory must be updated, corrected, deprecated | Flag never-revised memories |
+| [A-MEM](https://arxiv.org/abs/2502.12110) | Linked notes; new memories update old ones | Link-density / contradiction-accretion checks |
+| [Episodic memory position](https://arxiv.org/abs/2502.06975) | Persist instance-specific episodes with context | Memory content rubric |
+| [Memory survey (operations)](https://arxiv.org/abs/2505.00675) | Six atomic operations; most files only ever "add" | MEMORY.md health checklist |
+| [Memory survey (functions)](https://arxiv.org/abs/2512.13564) | Classify factual/experiential/working; dynamics fail, not storage | Memory entry classification |
 
 ---
 
