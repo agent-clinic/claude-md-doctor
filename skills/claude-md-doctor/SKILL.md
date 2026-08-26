@@ -138,14 +138,34 @@ Guidance:
   detection) and an `origin` (root/nested/rules — only non-root rules can be
   truly absent after compaction).
 
+Engine semantics you need (so you don't reverse-engineer them):
+- **"Opportunities"** = matcher fires (violation+compliance+context hits) for
+  regex rules, and mutated-session count for ordering rules. Zero can mean
+  "rule never applied" OR "your scope is wrong" — for any zero-fire
+  path-scoped rule, run one **negative control** (confirm the sessions
+  contain no events under that scope at all) before calling it inert.
+- `scope.paths` filters only events that carry a file path; **bash events
+  pass a paths filter** (they have no path) — for mixed bash+edit rules put
+  path constraints into the regex (`^PATH: …`) if bash must be excluded.
+- `exclude_paths` and `repo_only` DO apply to ordering-rule mutation
+  counting.
+- Edit/Write matchable content is **truncated to ~1200 chars** of new
+  content (bash commands ~600) — first-line rules are fine; end-of-file or
+  size rules are not expressible as content regexes.
+- Condensed sessions are a **top-level JSON array** of event objects.
+- **Read-before-edit ordering is NOT yet expressible** (`ordering.require`
+  matches bash commands only) — classify such rules as unmechanized hooks;
+  don't torture a regex.
+
 ### 4c — run the engine
 
     python3 SCRIPTS/backtest.py --work WORK
 
 ### 4d — sample-verify (MANDATORY — matchers have bugs)
 
-Read `WORK/backtest.json`. For EVERY rule with fires, read its sample
-excerpts and confirm each is a true positive. A matcher with any false
+Read `WORK/backtest.json`. For EVERY rule with fires — violation AND
+compliance samples both — read the sample excerpts and confirm each is a
+true positive. A matcher with any false
 positive gets fixed in `rulebook.json` and the engine re-run — this loop is
 cheap and it is the whole reason the results can be trusted. Only when every
 sampled fire is confirmed, set `"verified": true` in `backtest.json`
@@ -199,8 +219,13 @@ Write `WORK/diagnosis.json`:
      "status": "verified|drifted|unverified", "detail": "…"}
   ],
   "dismissed_refs": [
-    {"ref": "the exact ref string from refcheck.json", "reason": "why it is a false positive (route not file, MIME type, described as deleted, …)"}
+    {"ref": "the exact ref string from refcheck.json", "line": 46,
+     "reason": "why it is a false positive (route not file, MIME type, described as deleted, …)"}
   ],
+  "rule_verdicts": {
+    "R1": {"verdict": "healthy|ignored|mixed|inert|unmeasured|abandoned",
+           "note": "one line of judgment; 'abandoned' = the repo's own history contradicts the rule (e.g. git shows the team doing the banned thing routinely) even if sessions were inert"}
+  },
   "diagnoses": [
     {"state": "dead-ref|stale|vague|ignored|inert|redundant|contradictory|oversized|accretion|generated-unpruned",
      "severity": "critical|warn|info",
@@ -219,8 +244,9 @@ Write `WORK/diagnosis.json`:
 
 Rules for this stage:
 - **Every diagnosis needs evidence** (a quoted line, a metric, a failed check)
-  and, where one exists, a citation id. Valid ids are in `report.py`'s
-  CITATIONS table — use only those. A check with no official or research
+  and, where one exists, a citation id. List the valid ids and what each
+  source claims with `python3 SCRIPTS/report.py --list-citations` — use only
+  those ids, and only where the source actually supports the point. A check with no official or research
   backing is stated as a heuristic in its `detail`.
 - **Severity honestly**: `critical` = the file lies to the agent (dead refs,
   drifted claims, contradictions) or content is being skipped (4 MiB);
@@ -230,9 +256,9 @@ Rules for this stage:
   no structural effect in its tested range (citation id `mcmillan`) — do not
   present size/position folklore as causal fact. Content findings (dead refs,
   drift) need no such hedge.
-- **Grade rubric**: A = no critical, ≤2 warns; B = no critical, some warns;
-  C = 1–2 criticals or pervasive warns; D = several criticals; F = the file
-  is actively misleading (mostly dead/drifted) or unloadable. A pointer-style
+- **Grade rubric**: A = no criticals and at most 2 warns; B = no criticals
+  and 3 or more warns; C = 1–2 criticals; D = 3+ criticals; F = the file is
+  actively misleading (mostly dead/drifted) or unloadable. A pointer-style
   CLAUDE.md with a healthy target grades on the target.
 - Cannot-fix scopes (ancestor/user/managed files) may generate `info`
   diagnoses only.
@@ -244,7 +270,7 @@ Rules for this stage:
   other agents reading AGENTS.md will lose this") and prefer in-file fixes for
   content every agent needs.
 
-## Stage 5 — report
+## Stage 6 — report
 
     python3 SCRIPTS/report.py --work WORK
 
@@ -257,5 +283,6 @@ INCOMPLETE warning, say which stage was missing and why.
 
 - Everything runs locally; never send file contents anywhere.
 - Quote at most ~2 lines from any file in evidence.
-- v0.1 does not read session transcripts. If the user asks for adherence
-  checking, say that is the v0.2 backtest and it is not built yet.
+- In a headless or background run, do not try to "open" the report — state
+  its path (report.html lands in the work directory's PARENT, next to
+  report.json) and summarize it.

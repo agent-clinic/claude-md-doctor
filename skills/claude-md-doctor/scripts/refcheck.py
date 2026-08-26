@@ -37,9 +37,14 @@ PNPM_BUILTINS = {"install", "i", "add", "remove", "rm", "update", "up", "dlx",
 YARN_BUILTINS = PNPM_BUILTINS | {"workspaces", "workspace", "dedupe", "info"}
 
 
+API_PATH_RE = re.compile(r"^/(v\d+|api|graphql)(/|$)")
+
+
 def looks_pathish(token):
     if URL_RE.search(token) or " " in token or token.startswith("@"):
         return False
+    if API_PATH_RE.match(token):
+        return False  # /v1/... style API endpoint, not a filesystem path
     if any(ch in token for ch in "<>{}$()|;"):
         return False
     if not re.search(r"[A-Za-z0-9]", token):

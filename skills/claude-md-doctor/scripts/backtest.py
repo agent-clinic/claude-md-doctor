@@ -232,7 +232,10 @@ def main():
         sys.exit("backtest: missing or empty rulebook.json (write it first — see SKILL.md stage 4)")
     repo = intake.get("repo", "")
     sess_dir = os.path.join(args.work, "sessions")
-    sessions = [s for s in index.get("sessions", []) if s.get("events")]
+    # a "session" with zero tool calls is a stub in spirit (greeting-only or
+    # caveat records) — replaying it inflates the coverage claim
+    sessions = [s for s in index.get("sessions", [])
+                if s.get("events") and s.get("tools", 0) > 0]
 
     stats = {}
     for rule in rulebook["rules"]:

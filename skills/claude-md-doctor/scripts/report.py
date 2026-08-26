@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.3.3"
+VERSION = "0.3.4"
 
 CLASS_PILL = {"hook": "p-ok", "linter": "p-info", "test": "p-info",
               "judge": "p-warn"}
@@ -184,10 +184,18 @@ def build_lab(refcheck, diagnosis, order):
     parts = []
     flagged = [r for r in refcheck["references"]
                if r["status"] in ("missing", "machine_specific", "glob_empty")]
-    dismissed = {d["ref"]: d.get("reason", "reviewed: not a real reference")
-                 for d in (diagnosis or {}).get("dismissed_refs", [])}
-    bad_refs = [r for r in flagged if r["ref"] not in dismissed]
-    dropped = [r for r in flagged if r["ref"] in dismissed]
+    dismissals = (diagnosis or {}).get("dismissed_refs", [])
+
+    def dismissal_for(r):
+        # match on ref + line when the dismissal carries a line, else ref only
+        for d in dismissals:
+            if d["ref"] == r["ref"] and ("line" not in d or d["line"] == r["line"]):
+                return d.get("reason", "reviewed: not a real reference")
+        return None
+
+    dismissed = {(r["ref"], r["line"]): dismissal_for(r) for r in flagged}
+    bad_refs = [r for r in flagged if not dismissed[(r["ref"], r["line"])]]
+    dropped = [r for r in flagged if dismissed[(r["ref"], r["line"])]]
     ok_n = len(refcheck["references"]) - len(flagged)
     parts.append("<p class='sub'>%d path references checked — %d resolve, "
                  "%d flagged (%d confirmed on review, %d dismissed as false "
@@ -208,7 +216,7 @@ def build_lab(refcheck, diagnosis, order):
         parts.append("<div class='tablebox'><table>%s</table></div>" % "".join(rows))
     if dropped:
         items = "".join("<li><code>%s</code> — %s</li>"
-                        % (esc(r["ref"]), esc(dismissed[r["ref"]]))
+                        % (esc(r["ref"]), esc(dismissed[(r["ref"], r["line"])]))
                         for r in dropped)
         parts.append("<details><summary>%d flag(s) dismissed on review</summary>"
                      "<ul class='plain foot'>%s</ul></details>"
@@ -241,7 +249,7 @@ def build_lab(refcheck, diagnosis, order):
 
 VERDICT_PILL = {"healthy": "p-ok", "ignored": "p-crit", "mixed": "p-warn",
                 "inert": "p-info", "unmeasured": "p-info",
-                "unverified": "p-info"}
+                "abandoned": "p-crit", "unverified": "p-info"}
 
 
 TL_CLASS = {"edit": "tl-e", "bash": "tl-b", "other": "tl-o"}
@@ -457,9 +465,17 @@ def build_prescriptions(diagnosis, order):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--work", required=True)
+    ap.add_argument("--work", required=False)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--list-citations", action="store_true",
+                    help="print valid citation ids with what each source claims")
     args = ap.parse_args()
+    if args.list_citations:
+        for cid, (label, url) in CITATIONS.items():
+            print("%-24s %s\n%25s%s" % (cid, label, "", url))
+        return
+    if not args.work:
+        ap.error("--work is required (unless --list-citations)")
     work = args.work
     intake = load_json(os.path.join(work, "intake.json"))
     vitals = load_json(os.path.join(work, "vitals.json"))
