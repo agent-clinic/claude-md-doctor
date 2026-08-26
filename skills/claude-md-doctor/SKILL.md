@@ -4,7 +4,7 @@ description: Give this repo's CLAUDE.md / AGENTS.md a checkup — size vitals vs
 argument-hint: "[repo path] [--include-user]"
 ---
 
-# CLAUDE.md Doctor — exam procedure (v0.2: static exam + session backtest)
+# CLAUDE.md Doctor — exam procedure
 
 You are running a checkup on this repository's agent-instruction files. The
 deterministic work lives in scripts; your job is the judgment between them.
@@ -238,7 +238,7 @@ Write `WORK/diagnosis.json`:
   "prescriptions": [
     {"action": "repo-wide action", "rationale": "why", "citations": ["eth"]}
   ],
-  "followup": ["re-run cadence, cleanupPeriodDays advice, v0.2 backtest note"]
+  "followup": ["re-run cadence; transcript-retention advice; what to fix first"]
 }
 ```
 
@@ -262,6 +262,10 @@ Rules for this stage:
   CLAUDE.md with a healthy target grades on the target.
 - Cannot-fix scopes (ancestor/user/managed files) may generate `info`
   diagnoses only.
+- **Never mention this tool's version numbers in report content** (diagnoses,
+  notes, follow-ups, chief complaint). The renderer stamps the version in the
+  report footer; content reads timelessly — a reader doesn't know or care
+  what "v0.2" means.
 - **Pointer repos are usually cross-agent repos.** When the patient is an
   AGENTS.md reached via a pointer, it likely serves Cursor/Codex/Copilot too —
   prescriptions that relocate content into Claude-only surfaces

@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.3.4"
+VERSION = "0.3.5"
 
 CLASS_PILL = {"hook": "p-ok", "linter": "p-info", "test": "p-info",
               "judge": "p-warn"}
