@@ -110,7 +110,10 @@ the medicine:
 
 The arming ladder (reminder → warn → block) is set per rule from its own
 violation forensics, and **review-then-arm hook proposals** are written to
-the exam folder — nothing is ever installed automatically. Matcher fires are
+the exam folder — nothing is ever installed automatically. Every checkup
+also emits a **share-safe card** (grade, hearts, doctor's note — aggregates
+only, never a string from your repo) and a **`claude-md-health.svg` badge**
+for your README. Matcher fires are
 sample-verified before they count, because matchers have bugs; unverified
 results are banner-labeled provisional. Research shows agents silently skip
 mandated steps while outputs still pass checks; only behavioral evidence

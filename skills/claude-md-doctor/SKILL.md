@@ -238,7 +238,8 @@ Write `WORK/diagnosis.json`:
   "prescriptions": [
     {"action": "repo-wide action", "rationale": "why", "citations": ["eth"]}
   ],
-  "followup": ["re-run cadence; transcript-retention advice; what to fix first"]
+  "followup": ["re-run cadence; transcript-retention advice; what to fix first"],
+  "share_note": "one quotable line for the public share card — dry doctor's wit backed by the findings. STRICT safety: no file paths, no rule text, no quotes from the repo, no session ids, nothing repo-identifying; aggregate truths only (e.g. 'The loudest rule was the broken one.'). Omit the field to use a deterministic fallback."
 }
 ```
 
@@ -277,6 +278,15 @@ Rules for this stage:
 ## Stage 6 — report
 
     python3 SCRIPTS/report.py --work WORK
+
+Then generate the share-safe card and badge:
+
+    python3 SCRIPTS/card.py --work WORK
+
+`card.svg` (postable checkup card) and `claude-md-health.svg` (README badge)
+land next to report.html. Both are aggregate-only by construction — but eye
+the card once anyway before telling the user it is safe to post. Offer the
+badge snippet the script prints for their README.
 
 Open or send the resulting `report.html` to the user, and summarize in chat:
 grade, chief complaint, the top 3 findings, and the single highest-value

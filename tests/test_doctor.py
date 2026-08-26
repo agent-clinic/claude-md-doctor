@@ -258,6 +258,42 @@ class TestBacktest(ToyRepo):
         self.assertIn("REVIEW BEFORE ARMING", proposals)
         self.assertIn("BLOCK-ready", proposals)
 
+    def test_share_card_is_aggregate_only(self):
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        run("vitals.py", "--work", self.work)
+        with open(os.path.join(self.work, "rulebook.json"), "w") as f:
+            json.dump({"rules": [
+                {"id": "S1", "text": "SECRET-RULE-TEXT never do the thing",
+                 "source": {"file": "CLAUDE.md", "line": 4},
+                 "scope": {"events": ["edit"]},
+                 "matchers": {"violation": "zzz"},
+                 "enforcement": {"class": "hook", "current_layer": "prose"}},
+            ]}, f)
+        with open(os.path.join(self.work, "diagnosis.json"), "w") as f:
+            json.dump({"grade": "B",
+                       "rule_verdicts": {"S1": {"verdict": "ignored",
+                                                "note": "SECRET-NOTE"}},
+                       "diagnoses": [{"severity": "critical", "state": "stale",
+                                      "title": "SECRET-TITLE",
+                                      "detail": "SECRET-DETAIL"}]}, f)
+        run("card.py", "--work", self.work)
+        parent = os.path.dirname(self.work)
+        with open(os.path.join(parent, "card.svg")) as f:
+            card = f.read()
+        with open(os.path.join(parent, "claude-md-health.svg")) as f:
+            badge = f.read()
+        # privacy: aggregates only — nothing from the repo's content leaks
+        for leak in ("SECRET", self.repo, "/Users/", "CLAUDE.md:", "exists.md"):
+            self.assertNotIn(leak, card)
+        self.assertIn("The loudest rule was the broken one.", card)  # fallback note
+        self.assertIn("1 could be laws", card)
+        self.assertIn("grade B", badge)
+        # --anonymous omits even the repo basename
+        run("card.py", "--work", self.work, "--anonymous")
+        with open(os.path.join(parent, "card.svg")) as f:
+            anon = f.read()
+        self.assertNotIn(os.path.basename(self.repo), anon)
+
 
 class TestReport(ToyRepo):
     def test_report_renders_and_discloses_incomplete(self):
