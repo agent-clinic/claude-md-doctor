@@ -8,7 +8,7 @@ errors. Sidecar records and tool_result bodies are dropped. Parsing is
 defensive — the transcript format is undocumented and aborted stub sessions
 exist in the wild.
 
-Usage: python3 sessions.py --work DIR [--max-sessions N] [--days N]
+Usage: python3 sessions.py --work DIR [--max-sessions N] [--dir OVERRIDE]
 Reads:  <work>/intake.json    Writes: <work>/sessions/<id>.json + sessions_index.json
 """
 
@@ -62,27 +62,45 @@ def condense_file(path):
                 events.append({"t": "compact", "turn": turns, "ts": ts,
                                "off": line_off})
                 continue
+            if rec.get("isMeta") or rec.get("isSidechain"):
+                continue  # injected skill/command bodies, subagent records —
+                          # they wear type:"user" but are not the human
             msg = rec.get("message") or {}
             content = msg.get("content")
             n_before = len(events)
             if rtype == "user":
+                # origin.kind (newer transcripts): "human" = actually typed
+                src = (rec.get("origin") or {}).get("kind")
                 if isinstance(content, str):
                     turns += 1
-                    events.append({"t": "user", "turn": turns, "ts": ts,
-                                   "text": _head(content, TEXT_CAP)})
+                    ev = {"t": "user", "turn": turns, "ts": ts,
+                          "text": _head(content, TEXT_CAP)}
+                    if src:
+                        ev["src"] = src
+                    events.append(ev)
                 elif isinstance(content, list):
                     texts = [b.get("text", "") for b in content
                              if isinstance(b, dict) and b.get("type") == "text"]
                     if texts:
                         turns += 1
-                        events.append({"t": "user", "turn": turns, "ts": ts,
-                                       "text": _head("\n".join(texts), TEXT_CAP)})
+                        ev = {"t": "user", "turn": turns, "ts": ts,
+                              "text": _head("\n".join(texts), TEXT_CAP)}
+                        if src:
+                            ev["src"] = src
+                        events.append(ev)
                     for b in content:
                         if isinstance(b, dict) and b.get("type") == "tool_result" \
                                 and b.get("is_error"):
-                            events.append({"t": "tool_error", "turn": turns,
-                                           "ts": ts,
-                                           "text": _head(b.get("content", ""), 200)})
+                            ev = {"t": "tool_error", "turn": turns, "ts": ts,
+                                  "text": _head(b.get("content", ""), 200)}
+                            # user-rejected | permission-rule | automode-blocked
+                            if rec.get("toolDenialKind"):
+                                ev["denial"] = rec["toolDenialKind"]
+                            # ties the error to its tool call even when the
+                            # assistant batched several calls in one turn
+                            if b.get("tool_use_id"):
+                                ev["for_id"] = b["tool_use_id"][-8:]
+                            events.append(ev)
             elif rtype == "assistant" and isinstance(content, list):
                 for b in content:
                     if not isinstance(b, dict):
@@ -95,6 +113,8 @@ def condense_file(path):
                         name = b.get("name", "?")
                         inp = b.get("input") or {}
                         ev = {"t": "tool", "turn": turns, "ts": ts, "name": name}
+                        if b.get("id"):
+                            ev["id"] = b["id"][-8:]
                         if name == "Bash":
                             ev["command"] = _head(inp.get("command", ""), 600)
                         elif name in ("Edit", "Write", "MultiEdit", "NotebookEdit"):

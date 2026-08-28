@@ -18,7 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_json, save_json, manifest_add
 
-VERSION = "0.4.4"
+VERSION = "0.5.0"
 
 CLASS_PILL = {"hook": "p-ok", "linter": "p-info", "test": "p-info",
               "judge": "p-warn"}
@@ -179,7 +179,9 @@ def build_files_table(vitals):
                     % (esc(os.path.basename(path) if m["scope"] != "nested"
                            else path), m["effective_lines"], m["est_tokens"],
                        " ".join(markers) or "—"))
-    return "\n".join(rows)
+    return "\n".join(rows) or ("<tr><td colspan='4' class='sub'>no memory "
+                               "files on record — see the Initial chart "
+                               "below</td></tr>")
 
 
 def build_lab(refcheck, diagnosis, order):
@@ -253,7 +255,8 @@ def build_lab(refcheck, diagnosis, order):
 
 VERDICT_PILL = {"healthy": "p-ok", "ignored": "p-crit", "mixed": "p-warn",
                 "inert": "p-info", "unmeasured": "p-info",
-                "abandoned": "p-crit", "unverified": "p-info"}
+                "abandoned": "p-crit", "unverified": "p-info",
+                "undocumented": "p-warn"}
 
 
 TL_CLASS = {"edit": "tl-e", "bash": "tl-b", "other": "tl-o"}
@@ -267,7 +270,7 @@ def render_sample(s):
     required command should have appeared."""
     head = "<div class='tl-sum'><b>%s</b>%s — %s</div>" % (
         esc(s.get("session", "")[:8]),
-        " (turn %s)" % s["turn"] if s.get("turn") else "",
+        " (turn %s)" % esc(s["turn"]) if s.get("turn") else "",
         esc(s.get("note") or s.get("excerpt", "")))
     viz = s.get("viz")
     if not viz:
@@ -297,7 +300,8 @@ def render_sample(s):
                esc(after), verdict_mark))
 
 
-def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note):
+def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note,
+                   mined=False):
     """One merged section: enforcement classification + adherence history +
     cause triage + arming, one row per rule."""
     rules = (rulebook or {}).get("rules") or []
@@ -326,10 +330,12 @@ def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note):
             % (c, CLASS_BAR.get(cls, "var(--ink3)"), c, cls)
             for cls, c in sorted(counts.items(), key=lambda kv: -kv[1]))
         parts.append(
-            "<p class='sub'><b>%d of %d</b> directives could be laws instead of "
+            "<p class='sub'><b>%d of %d</b> %s could be laws instead of "
             "requests (%d more already are — their prose is the pointer). Prose is "
             "advisory even when demonstrably seen; compiled checks are what change "
-            "behavior.%s</p>" % (lawable, len(rules), already,
+            "behavior.%s</p>" % (lawable, len(rules),
+                                 "mined rules" if mined else "directives",
+                                 already,
                                  cite(["trace", "sigil", "official-hooks"], order)))
         parts.append("<div class='tl' style='max-width:420px'>%s</div>" % bar)
         parts.append("<div class='tl-legend'>" + " ".join(
@@ -424,6 +430,104 @@ def build_rulebook(rulebook, backtest, diagnosis, work, order, fallback_note):
     return "\n".join(parts)
 
 
+FAMILY_LABEL = {"correction": "user correction", "failure_recovery": "failed → fixed",
+                "rediscovery": "re-discovered", "denial": "permission denial",
+                "preamble": "repeated preamble"}
+PLACEMENT_NOTE = {"hook": "hook proposal written — review-then-arm",
+                  "linter": "encode as a lint rule — binds humans too",
+                  "test": "encode as a test — binds humans too",
+                  "judge": "prose; only a judge can score it"}
+
+
+def build_chart(chart, work, order):
+    """Mined-from-history section: the initial chart for a file-less repo
+    (mode intake) or the undocumented-rules gap analysis (mode gap)."""
+    if not chart or not (chart.get("facts") or chart.get("rules")):
+        return ""
+    mode = chart.get("mode", "intake")
+    facts, rules = chart.get("facts", []), chart.get("rules", [])
+    title = ("Initial chart — mined from history" if mode == "intake"
+             else "Undocumented rules — in the sessions, not the chart")
+    draft = os.path.join(os.path.dirname(work),
+                         "PROPOSED-CLAUDE.md" if mode == "intake"
+                         else "PROPOSED-ADDITIONS.md")
+    parts = []
+    if mode == "intake":
+        parts.append(
+            "<p class='sub'>No memory file exists for this repo, so the doctor "
+            "took a history instead: the session transcripts were mined for "
+            "recurring signals — corrections dictated in chat, failed→fixed "
+            "command pairs, facts re-discovered at every session start, "
+            "permission denials. <b>%d fact%s and %d rule%s</b> recurred and "
+            "survived review; each ships with receipts.%s</p>"
+            % (len(facts), "" if len(facts) == 1 else "s",
+               len(rules), "" if len(rules) == 1 else "s",
+               cite(["awm", "trace"], order)))
+    else:
+        parts.append(
+            "<p class='sub'>These signals recur in this repo's sessions but "
+            "appear in none of its memory files — rules the user keeps "
+            "dictating by hand, session after session. Each ships with "
+            "receipts.%s</p>" % cite(["awm", "trace"], order))
+    tax = chart.get("startup_tax") or {}
+    if tax.get("est_tokens"):
+        parts.append(
+            "<p class='sub'>Re-discovery tax: the recurring early discovery "
+            "commands consumed ~<b>%s tokens</b> of transcript across "
+            "%d session%s — re-deriving repo facts a memory file states once "
+            "(occupancy estimate attributed to those commands' records and "
+            "results).</p>"
+            % ("{:,}".format(tax["est_tokens"]), tax.get("sessions", 0),
+               "" if tax.get("sessions") == 1 else "s"))
+    rows = ["<tr><th>Proposed line</th><th>Signal</th>"
+            "<th>Evidence</th><th>Placement</th></tr>"]
+    for kind, items in (("fact", facts), ("rule", rules)):
+        for it in items:
+            text = it.get("text", "")
+            shown = text[:90] + ("…" if len(text) > 90 else "")
+            n, s = it.get("occurrences", 0), it.get("sessions", 0)
+            story = (it.get("provenance")
+                     or ("%d× across %d session%s" % (n, s, "" if s == 1 else "s")
+                         if n and s else "mined from history"))
+            ev = ""
+            samples = it.get("evidence") or []
+            if samples:
+                blocks = "".join(
+                    "<div class='tl-sum'><b>%s</b>%s — <span class='mono'>%s</span></div>"
+                    % (esc(str(sm.get("session", ""))[:8]),
+                       " (turn %s)" % esc(sm["turn"]) if sm.get("turn") else "",
+                       esc(sm.get("excerpt", "")))
+                    for sm in samples)
+                ev = ("<details><summary>receipts</summary>%s</details>" % blocks)
+            if kind == "fact":
+                place = "<span class='pill p-info'>fact</span>" \
+                        "<br><span class='sub'>prose — states it once</span>"
+            else:
+                cls = it.get("class") or "unclassified"
+                place = ("<span class='pill %s'>%s</span><br><span class='sub'>%s</span>"
+                         % (CLASS_PILL.get(cls, "p-info"), esc(cls),
+                            esc(PLACEMENT_NOTE.get(cls, "prose"))))
+            fam = it.get("family", "")
+            rows.append(
+                "<tr><td%s>%s%s</td><td><span class='pill p-warn'>%s</span></td>"
+                "<td>%s</td><td>%s</td></tr>"
+                % (" title='%s'" % esc(text) if len(text) > 90 else "",
+                   esc(shown), ev, esc(FAMILY_LABEL.get(fam, fam or "mined")),
+                   esc(story), place))
+    parts.append("<div class='tablebox'><table>%s</table></div>" % "".join(rows))
+    declined = chart.get("declined") or []
+    if declined:
+        items = "".join("<li>%s — %s</li>" % (esc(d.get("text", "")),
+                                              esc(d.get("reason", "")))
+                        for d in declined)
+        parts.append("<details><summary>%d candidate(s) declined on review</summary>"
+                     "<ul class='plain foot'>%s</ul></details>" % (len(declined), items))
+    parts.append("<p class='sub'>Draft (never auto-installed): <code>%s</code> — "
+                 "receipts ride in HTML comments, which Claude Code strips at "
+                 "load, so they cost the reviewer nothing.</p>" % esc(draft))
+    return "<section><h2>%s</h2>%s</section>" % (esc(title), "\n".join(parts))
+
+
 def build_diagnoses(diagnosis, order):
     out = []
     for d in (diagnosis or {}).get("diagnoses", []):
@@ -505,6 +609,7 @@ def main():
     tpl = open(tpl_path, encoding="utf-8").read()
     backtest = load_json(os.path.join(work, "backtest.json"))
     rulebook = load_json(os.path.join(work, "rulebook.json"))
+    chart = load_json(os.path.join(work, "chart.json"))
     grade = (diagnosis or {}).get("grade", "—")
     history_fallback = (diagnosis or {}).get("history_note") or (
         "Not examined in this run. %d session transcript(s) were located for "
@@ -527,8 +632,10 @@ def main():
         "{{VITALS_CARDS}}": build_vitals(vitals, order),
         "{{FILES_TABLE}}": build_files_table(vitals),
         "{{LAB_HTML}}": build_lab(refcheck, diagnosis, order),
-        "{{RULEBOOK_HTML}}": build_rulebook(rulebook, backtest, diagnosis,
-                                            work, order, history_fallback),
+        "{{RULEBOOK_HTML}}": build_rulebook(
+            rulebook, backtest, diagnosis, work, order, history_fallback,
+            mined=bool(chart and chart.get("mode") == "intake")),
+        "{{CHART_HTML}}": build_chart(chart, work, order),
         "{{DIAGNOSES_HTML}}": build_diagnoses(diagnosis, order),
         "{{PRESCRIPTIONS_HTML}}": build_prescriptions(diagnosis, order),
         "{{FOLLOWUP_HTML}}": "<ul class='rxlist'>%s</ul>" % (
@@ -553,7 +660,8 @@ def main():
                "generated": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                "grade": grade, "vitals": vitals, "refcheck_stats":
                (refcheck or {}).get("stats"), "diagnosis": diagnosis,
-               "backtest": backtest, "incomplete_stages": missing})
+               "backtest": backtest, "chart": chart,
+               "incomplete_stages": missing})
     manifest_add(work, "report", out=out_path, incomplete=missing)
     print("report: wrote %s%s" % (out_path,
           " (INCOMPLETE: missing %s)" % ",".join(missing) if missing else ""))

@@ -295,6 +295,304 @@ class TestBacktest(ToyRepo):
         self.assertNotIn(os.path.basename(self.repo), anon)
 
 
+class TestSessionsCondense(unittest.TestCase):
+    def test_meta_sidechain_skipped_and_denials_carried(self):
+        import sessions as sessions_mod
+        tmp = tempfile.TemporaryDirectory()
+        path = os.path.join(tmp.name, "t.jsonl")
+        recs = [
+            {"type": "user", "isMeta": True, "timestamp": "2026-08-01T00:00:00Z",
+             "message": {"content": [{"type": "text",
+                                      "text": "Base directory for this skill: …"}]}},
+            {"type": "user", "isSidechain": True,
+             "message": {"content": "orchestrator prompt"}},
+            {"type": "user", "origin": {"kind": "human"},
+             "timestamp": "2026-08-01T00:01:00Z",
+             "message": {"content": "no, use pnpm"}},
+            {"type": "assistant", "timestamp": "2026-08-01T00:01:30Z",
+             "message": {"content": [{"type": "tool_use",
+                                      "id": "toolu_ABCDEF12345678",
+                                      "name": "Bash",
+                                      "input": {"command": "git push"}}]}},
+            {"type": "user", "toolDenialKind": "user-rejected",
+             "timestamp": "2026-08-01T00:02:00Z",
+             "message": {"content": [{"type": "tool_result", "is_error": True,
+                                      "tool_use_id": "toolu_ABCDEF12345678",
+                                      "content": "The user doesn't want to proceed"}]}},
+        ]
+        with open(path, "w") as f:
+            for r in recs:
+                f.write(json.dumps(r) + "\n")
+        events, meta = sessions_mod.condense_file(path)
+        texts = [e.get("text", "") for e in events]
+        self.assertNotIn("Base directory for this skill: …", texts)
+        self.assertNotIn("orchestrator prompt", texts)
+        human = [e for e in events if e["t"] == "user"]
+        self.assertEqual(len(human), 1)
+        self.assertEqual(human[0]["src"], "human")
+        tools = [e for e in events if e["t"] == "tool"]
+        self.assertEqual(tools[0]["id"], "12345678")       # short id carried
+        errs = [e for e in events if e["t"] == "tool_error"]
+        self.assertEqual(errs[0]["denial"], "user-rejected")
+        self.assertEqual(errs[0]["for_id"], "12345678")    # error ↔ call tie
+        tmp.cleanup()
+
+
+class TestMine(ToyRepo):
+    def _sessions(self):
+        sdir = os.path.join(self.work, "sessions")
+        os.makedirs(sdir, exist_ok=True)
+        opener = ("this repo is the acme monorepo, app lives in apps/web and "
+                  "the api in services/api")
+        s1 = [
+            {"t": "user", "turn": 1, "off": 0, "ts": "2026-08-20T00:00:00Z",
+             "text": opener},
+            {"t": "tool", "name": "Bash", "turn": 1, "off": 100,
+             "command": "cat package.json"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 200,
+             "command": "npm test"},
+            {"t": "tool_error", "turn": 2, "off": 300,
+             "ts": "2026-08-20T00:01:00Z", "text": "Exit code 1\nnpm ERR!"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 400,
+             "command": "pnpm test"},
+            {"t": "tool", "name": "Bash", "turn": 3, "off": 500,
+             "command": "git push origin main"},
+            {"t": "tool_error", "turn": 3, "off": 600,
+             "ts": "2026-08-20T00:02:00Z", "denial": "user-rejected",
+             "text": "The user doesn't want to proceed with this tool use."},
+            {"t": "user", "turn": 3, "off": 650,
+             "text": "[Request interrupted by user for tool use]"},
+            {"t": "user", "turn": 4, "off": 700, "ts": "2026-08-20T00:03:00Z",
+             "text": "never push directly, open a PR"},
+            {"t": "tool", "name": "Bash", "turn": 5, "off": 800,
+             "command": "gh pr create"},
+        ]
+        s2 = [
+            {"t": "user", "turn": 1, "off": 0, "ts": "2026-08-10T00:00:00Z",
+             "text": opener},
+            {"t": "tool", "name": "Bash", "turn": 1, "off": 100,
+             "command": "cat package.json"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 200,
+             "command": "npm test"},
+            {"t": "tool_error", "turn": 2, "off": 300,
+             "ts": "2026-08-10T00:01:00Z", "text": "Exit code 1"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 400,
+             "command": "pnpm test"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 450,
+             "command": "yarn dev"},
+            {"t": "tool_error", "turn": 2, "off": 470,
+             "ts": "2026-08-05T00:00:00Z", "text": "yarn: not found"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 490,
+             "command": "pnpm dev"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 500,
+             "command": "git push origin main"},
+            {"t": "tool_error", "turn": 2, "off": 600,
+             "ts": "2026-08-10T00:02:00Z", "denial": "user-rejected",
+             "text": "The user doesn't want to proceed with this tool use."},
+            {"t": "user", "turn": 3, "off": 700, "ts": "2026-08-10T00:03:00Z",
+             "text": "no, use pnpm not npm"},
+            {"t": "tool", "name": "Bash", "turn": 3, "off": 800,
+             "command": "rm -rf node_modules"},
+            {"t": "tool_error", "turn": 3, "off": 900,
+             "denial": "automode-blocked",
+             "text": "Permission for this action was denied by the Claude "
+                     "Code auto mode classifier. Reason: …"},
+        ]
+        s3 = [
+            {"t": "user", "turn": 1, "off": 0, "ts": "2026-08-01T00:00:00Z",
+             "text": "<command-name>/model</command-name> sidecar noise"},
+            {"t": "user", "turn": 1, "off": 10, "ts": "2026-08-01T00:00:01Z",
+             "text": "quick fix please"},
+            {"t": "tool", "name": "Bash", "turn": 1, "off": 100,
+             "command": "cat package.json"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 200,
+             "command": "ls -la"},
+            {"t": "user", "turn": 2, "off": 300, "ts": "2026-08-01T00:01:00Z",
+             "text": "no, use pnpm not npm"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 350,
+             "command": "yarn dev"},
+            {"t": "tool_error", "turn": 2, "off": 370,
+             "ts": "2026-08-01T00:02:00Z", "text": "yarn: not found"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 390,
+             "command": "pnpm dev"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 400,
+             "command": "cargo build"},
+            {"t": "tool_error", "turn": 2, "off": 500,
+             "ts": "2026-08-01T00:03:00Z", "text": "error[E0432]"},
+            {"t": "tool", "name": "Bash", "turn": 2, "off": 600,
+             "command": "echo done"},
+        ]
+        # s4: the assistant batched two calls before the denial arrived —
+        # id-based association must blame `git push`, not the nearest Read
+        s4 = [
+            {"t": "user", "turn": 1, "off": 0, "ts": "2026-08-01T01:00:00Z",
+             "text": "push my branch"},
+            {"t": "tool", "name": "Bash", "turn": 1, "off": 50, "id": "aaa111",
+             "command": "git push origin main"},
+            {"t": "tool", "name": "Read", "turn": 1, "off": 90, "id": "bbb222"},
+            {"t": "tool_error", "turn": 1, "off": 130,
+             "ts": "2026-08-01T01:01:00Z", "denial": "user-rejected",
+             "for_id": "aaa111",
+             "text": "The user doesn't want to proceed with this tool use."},
+        ]
+        for sid, events in (("s1", s1), ("s2", s2), ("s3", s3), ("s4", s4)):
+            with open(os.path.join(sdir, sid + ".json"), "w") as f:
+                json.dump(events, f)
+        with open(os.path.join(self.work, "sessions_index.json"), "w") as f:
+            json.dump({"sessions": [
+                {"id": "s1", "events": len(s1), "tools": 5,
+                 "last_ts": "2026-08-20T00:03:00Z"},
+                {"id": "s2", "events": len(s2), "tools": 7,
+                 "last_ts": "2026-08-10T00:03:00Z"},
+                {"id": "s3", "events": len(s3), "tools": 6,
+                 "last_ts": "2026-08-01T00:03:00Z"},
+                {"id": "s4", "events": len(s4), "tools": 2,
+                 "last_ts": "2026-08-01T01:01:00Z"},
+            ]}, f)
+
+    def test_mine_families_gates_and_dedupe(self):
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        self._sessions()
+        run("mine.py", "--work", self.work)
+        c = jload(self.work, "candidates.json")
+
+        texts = [x["text"] for x in c["corrections"]]
+        self.assertIn("never push directly, open a PR", texts)
+        self.assertEqual(texts.count("no, use pnpm not npm"), 1)  # fork-echo dedupe
+        self.assertFalse(any("<command-name>" in t for t in texts))
+        push = [x for x in c["corrections"]
+                if x["text"].startswith("never push")][0]
+        self.assertIn("pivot", push["signals"])
+        self.assertIn("after-interrupt", push["signals"])
+
+        pairs = {(p["failed_word"], p["retry_word"]): p
+                 for p in c["failure_recovery"]}
+        self.assertIn(("npm", "pnpm"), pairs)
+        self.assertEqual(pairs[("npm", "pnpm")]["sessions"], 2)
+        self.assertIn(("yarn", "pnpm"), pairs)
+        self.assertTrue(pairs[("yarn", "pnpm")]["stale"])   # gone from newer half
+        self.assertFalse(pairs[("npm", "pnpm")]["stale"])
+        self.assertNotIn(("cargo", "echo"), pairs)          # dissimilar: no pair
+
+        redisc = {r["key"]: r for r in c["rediscovery"]}
+        self.assertIn("cat package.json", redisc)
+        self.assertEqual(redisc["cat package.json"]["sessions"], 3)
+        self.assertNotIn("ls", redisc)                      # one session only
+        # `git push` recurs early in 3 sessions, so it mechanically survives —
+        # deciding it is not "discovery" is the judge's job, not the miner's
+        self.assertIn("git push", redisc)
+
+        denials = {(d["kind"], d["key"]): d for d in c["denials"]}
+        self.assertIn(("user-rejected", "git"), denials)
+        # 3 = id-association worked: s4's batched denial blames git, not Read
+        self.assertEqual(denials[("user-rejected", "git")]["sessions"], 3)
+        self.assertNotIn(("user-rejected", "Read"), denials)
+        self.assertFalse(any(d["kind"] == "automode-blocked"
+                             for d in c["denials"]))
+        self.assertEqual(c["meta"]["automode_blocked"], 1)
+
+        self.assertEqual(len(c["preambles"]), 1)
+        self.assertEqual(c["preambles"][0]["sessions"], 2)
+        self.assertTrue(c["preambles"][0]["identical_echo"])
+
+        # tax attributes bytes to the surviving early-command groups (cat ×3
+        # sessions + git push ×3, whose union spans all four sessions)
+        self.assertEqual(c["startup_tax"]["sessions"], 4)
+        self.assertGreater(c["startup_tax"]["est_tokens"], 0)
+        # the raw early-window median stays available, clearly labeled
+        self.assertEqual(c["startup_tax"]["early_window_median_bytes"], 700)
+
+
+class TestGenerate(ToyRepo):
+    def _chart(self, **over):
+        chart = {
+            "mode": "intake",
+            "facts": [{"text": "Tests: `pnpm test` from the repo root.",
+                       "section": "Commands", "family": "rediscovery",
+                       "occurrences": 7, "sessions": 5}],
+            "rules": [{"id": "MR1", "text": "Use pnpm, never npm.",
+                       "family": "failure_recovery", "class": "hook",
+                       "occurrences": 4, "sessions": 3,
+                       "evidence": [{"session": "abadcafe", "turn": 9,
+                                     "excerpt": "npm ERR! … then pnpm install"}]}],
+            "startup_tax": {"est_tokens": 30000, "sessions": 12},
+            "declined": [{"text": "SECRET-ONE-OFF", "reason": "single occurrence"}],
+        }
+        chart.update(over)
+        with open(os.path.join(self.work, "chart.json"), "w") as f:
+            json.dump(chart, f)
+
+    def test_generate_draft_with_receipts(self):
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        self._chart(facts=[
+            {"text": "Tests: `pnpm test` from the repo root.",
+             "section": "Commands", "family": "rediscovery",
+             "occurrences": 7, "sessions": 5},
+            {"text": "The api lives in services/api --> not apps.",
+             "family": "preamble", "occurrences": 3, "sessions": 3},
+        ])
+        run("generate.py", "--work", self.work)
+        draft_path = os.path.join(os.path.dirname(self.work), "PROPOSED-CLAUDE.md")
+        with open(draft_path) as f:
+            draft = f.read()
+        self.assertIn("## Commands", draft)
+        self.assertIn("Use pnpm, never npm.", draft)
+        self.assertIn("seen 4× across 3 sessions", draft)   # receipt comment
+        self.assertIn("hook-enforceable", draft)
+        self.assertNotIn("SECRET-ONE-OFF", draft)           # declined never renders
+        # unsectioned facts render BEFORE any heading, never under one
+        self.assertLess(draft.index("The api lives"), draft.index("## Commands"))
+        # a comment delimiter inside body text must not swallow the draft
+        self.assertNotIn("--> not apps", draft)
+        self.assertIn("--&gt; not apps", draft)
+        # adoption is the user's move — nothing lands in the repo root
+        self.assertFalse(os.path.exists(os.path.join(self.repo, "PROPOSED-CLAUDE.md")))
+        self.assertFalse(os.path.exists(os.path.join(self.repo, "CLAUDE.md.proposed")))
+
+    def test_generate_enforces_size_target(self):
+        # the doctor must not prescribe the disease it diagnoses
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        rules = [{"id": "MR%d" % i, "text": "Rule number %d always applies." % i,
+                  "family": "correction", "class": "judge"} for i in range(250)]
+        self._chart(rules=rules)
+        r = subprocess.run([sys.executable, os.path.join(SCRIPTS, "generate.py"),
+                            "--work", self.work], capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("OVER the official", r.stdout + r.stderr)
+
+    def test_chart_renders_in_report_and_card(self):
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        run("vitals.py", "--work", self.work)
+        run("refcheck.py", "--work", self.work)
+        self._chart(rules=[
+            {"id": "MR1", "text": "Use pnpm, never npm.",
+             "family": "failure_recovery", "class": "hook",
+             "occurrences": 4, "sessions": 3,
+             "evidence": [{"session": "abadcafe", "turn": 9,
+                           "excerpt": "npm ERR! … then pnpm install"}]},
+            # canaries: model-authored class/provenance must never reach the card
+            {"id": "MR2", "text": "SECRET-RULE two", "family": "correction",
+             "class": "CLASS-CANARY not an enum", "occurrences": 2,
+             "sessions": 2, "provenance": "PROV-CANARY seen in s1"},
+        ])
+        with open(os.path.join(self.work, "diagnosis.json"), "w") as f:
+            json.dump({"grade": "C", "chief_complaint": "no chart on file"}, f)
+        out = os.path.join(self.tmp.name, "r.html")
+        run("report.py", "--work", self.work, "--out", out)
+        with open(out) as f:
+            html = f.read()
+        self.assertIn("Initial chart", html)
+        self.assertIn("failed → fixed", html)
+        self.assertIn("SECRET-ONE-OFF", html)   # declined disclosed (report is local)
+        run("card.py", "--work", self.work)
+        with open(os.path.join(os.path.dirname(self.work), "card.svg")) as f:
+            card = f.read()
+        self.assertIn("1 fact + 2 rules mined from history", card)
+        self.assertIn("The chart was in the history all along.", card)
+        for leak in ("pnpm", "SECRET", "abadcafe", "CANARY"):  # aggregates only
+            self.assertNotIn(leak, card)
+
+
 class TestVersionSync(unittest.TestCase):
     def test_report_version_matches_plugin_manifest(self):
         # The report footer stamps report.VERSION; the marketplace ships

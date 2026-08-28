@@ -1,6 +1,6 @@
 ---
 name: claude-md-doctor
-description: Give this repo's CLAUDE.md / AGENTS.md a checkup — size vitals vs official guidance, dead references, dead commands, stale claims — then backtest every rule against the repo's own Claude Code session history to see which rules were actually followed, ignored, or never used, and produce a doctor-style HTML report with evidence-cited prescriptions. Use when asked to check, diagnose, audit, review, improve, optimize, lint, grade, fix, clean up, shorten, or "doctor" CLAUDE.md, AGENTS.md, or agent instruction/memory files, or to find out whether CLAUDE.md rules actually work.
+description: Give this repo's CLAUDE.md / AGENTS.md a checkup — size vitals vs official guidance, dead references, dead commands, stale claims — then backtest every rule against the repo's own Claude Code session history to see which rules were actually followed, ignored, or never used, and produce a doctor-style HTML report with evidence-cited prescriptions. Use when asked to check, diagnose, audit, review, improve, optimize, lint, grade, fix, clean up, shorten, or "doctor" CLAUDE.md, AGENTS.md, or agent instruction/memory files, or to find out whether CLAUDE.md rules actually work. Also use when a repo has NO memory file and the user wants one — "write/generate/suggest a CLAUDE.md (or hooks) from my sessions" — the skill mines the repo's real session history and drafts a proposed file with receipts.
 argument-hint: "[repo path] [--include-user]"
 ---
 
@@ -45,8 +45,11 @@ Then read `WORK/intake.json` (it is small). Note for later judgment:
   `@AGENTS.md`), and you should still run the full static exam on the
   AGENTS.md itself, since it becomes the patient the moment the pointer
   exists.
-- If NO memory files exist at all, stop and report that: the prescription is
-  to create one (suggest `/init` then aggressive pruning), not an empty report.
+- If NO memory files exist at all, do not stop with an empty report — switch
+  to **Mode B** (below): mine the session history and write the initial
+  chart. Only when there is no session history either does the exam end,
+  with the `/init`-plus-aggressive-pruning prescription and a note saying
+  why nothing else could run.
 
 ## Stage 2 — vitals
 
@@ -185,6 +188,9 @@ Then record per-rule verdicts in `diagnosis.json` under `rule_verdicts`:
 }
 ```
 
+(That is the common subset — Stage 5's schema is canonical and adds
+`unmeasured|abandoned|undocumented`; mined rules take `undocumented`.)
+
 `inert` (zero opportunities in the window) is a finding, not a failure —
 say what it means: the rule cost context in every session and never came up.
 
@@ -215,6 +221,23 @@ honoring the rule — where a rule has a real outcome (tests pass, build
 green), prefer a gate that runs the outcome over one that greps a pattern. Tell the user
 where the proposals live and that they are review-then-arm.
 
+### 4f — gap analysis: what the sessions dictate that the file never says
+
+    python3 SCRIPTS/mine.py --work WORK
+
+Read `WORK/candidates.json` and compare the surviving groups against the
+rulebook: a recurrent signal (correction cluster, failed→fixed command
+pair, recurring user denial) that matches NO existing rule is a rule the
+user keeps dictating by hand, session after session. Judge as in Mode B2
+below — decline one-offs and `stale` groups (automode blocks are already
+excluded by the miner). For each
+accepted miss, add a diagnosis with state `undocumented` (severity `warn`,
+evidence = 1–2 excerpts), and when there are enough to matter, write
+`WORK/chart.json` with `"mode": "gap"` (schema at the top of `generate.py`)
+and run `python3 SCRIPTS/generate.py --work WORK` to emit
+`PROPOSED-ADDITIONS.md`. Mind the combined budget: proposed additions must
+not push the surface past the size target this same exam just graded.
+
 ## Stage 5 — diagnosis (your judgment, written to a file)
 
 Write `WORK/diagnosis.json`:
@@ -233,11 +256,11 @@ Write `WORK/diagnosis.json`:
      "reason": "why it is a false positive (route not file, MIME type, described as deleted, …)"}
   ],
   "rule_verdicts": {
-    "R1": {"verdict": "healthy|ignored|mixed|inert|unmeasured|abandoned",
+    "R1": {"verdict": "healthy|ignored|mixed|inert|unmeasured|abandoned|undocumented",
            "note": "one line of judgment; 'abandoned' = the repo's own history contradicts the rule (e.g. git shows the team doing the banned thing routinely) even if sessions were inert"}
   },
   "diagnoses": [
-    {"state": "dead-ref|stale|vague|ignored|inert|redundant|contradictory|oversized|accretion|generated-unpruned",
+    {"state": "dead-ref|stale|vague|ignored|inert|redundant|contradictory|oversized|accretion|generated-unpruned|undocumented",
      "severity": "critical|warn|info",
      "title": "short name", "detail": "1–3 sentences, plain language",
      "file": "/abs/path", "line": 46,
@@ -302,6 +325,108 @@ Open or send the resulting `report.html` to the user, and summarize in chat:
 grade, chief complaint, the top 3 findings, and the single highest-value
 prescription. Tell the user where the report lives. If report.py printed an
 INCOMPLETE warning, say which stage was missing and why.
+
+## Mode B — the chart-less patient (no memory file? mine one)
+
+Route here when intake found NO memory files at all, or when the user asked
+to *generate* a CLAUDE.md / hooks / lint suggestions from their history —
+but if the repo already HAS a memory file, never run Mode B: run the normal
+exam and satisfy the generate request through Stage 4f (gap analysis,
+`"mode": "gap"` → PROPOSED-ADDITIONS.md), so the existing file stays the
+patient and the intake framing ("no memory file exists") stays true.
+The transcripts already contain the unwritten rulebook: corrections the
+user keeps typing, commands that fail until the right one runs, facts
+re-derived at every session start, tool calls the user rejects. Mode B
+takes a history and writes the initial chart.
+
+Run Stages 2 and 3 first anyway — on an empty surface they finish instantly,
+keep the manifest honest, and "0 tokens loaded every session" is the
+patient's baseline vital.
+
+### B1 — condense and mine
+
+    python3 SCRIPTS/sessions.py --work WORK
+    python3 SCRIPTS/mine.py --work WORK
+
+`candidates.json` holds mechanically pre-filtered signals in five families
+(corrections, failure_recovery, rediscovery, denials, preambles) plus a
+startup-tax estimate. The lexical markers are calibrated to ~65–75%
+precision — YOU are the judge pass; nothing in this file is a rule yet.
+
+### B2 — judge the candidates (your judgment)
+
+Triage every entry:
+- **A rule** states something durable the user would still endorse: repeated
+  corrections that converge ("use pnpm", "never push directly"),
+  failed→fixed pairs whose fix is systematic (wrong runner, wrong dir,
+  missing env var), recurring `user-rejected`/`permission-rule` denials.
+  Write it as one imperative line.
+- **A fact** is repo knowledge the agent keeps re-deriving: build/test
+  commands from rediscovery groups, layout/context from preamble clusters.
+- **Decline** one-off taste, task-specific instructions, anything flagged
+  `stale` (the repo may have moved past it), and excerpts you cannot
+  confidently generalize. (Auto-mode classifier blocks are already excluded
+  by the miner — they appear only as `meta.automode_blocked`; do not
+  resurrect them.) Record notable declines with reasons — the report
+  discloses them.
+- The recurrence gates already ran for the GROUPED families
+  (failure_recovery, rediscovery, denials, preambles). Corrections are
+  ungated — any single flagged message reaches you — so judge them hardest;
+  a one-off correction is only a rule if its content is plainly durable.
+  Then apply the meaning test to everything: *would the user bet on this
+  line?* When unsure, decline — a mined draft earns trust by being small.
+  And spot-check recall: the pre-filter misses bare factual corrections
+  without marker words (`meta.known_gaps`); skim one or two condensed
+  sessions' user texts if the yield looks thin.
+
+### B3 — validate mined rules through the backtest (receipts)
+
+For each accepted rule that is mechanically checkable, write a standard
+`WORK/rulebook.json` entry (schema at the top of `backtest.py`; set
+`"source": {"file": "mined-from-history", "line": 0}`, classify its
+enforcement, give it an `echo_regex`), then:
+
+    python3 SCRIPTS/backtest.py --work WORK
+    python3 SCRIPTS/compile.py --work WORK
+
+The backtest counts are the rule's receipts — a mined rule whose matcher
+finds nothing in the very history that suggested it is a mining false
+positive: drop it. Sample-verify fires exactly as in Stage 4d. compile
+writes review-then-arm hook proposals for hook-class mined rules — born
+mechanized: the best CLAUDE.md line is the one a guard enforces.
+
+### B4 — write the chart and generate the draft
+
+Write `WORK/chart.json` (schema at the top of `generate.py`): accepted facts
+and rules with `occurrences`/`sessions` from mining or backtest, per-item
+`evidence` excerpts, `startup_tax` (copy `est_tokens`/`sessions` from
+candidates.json — the estimate is attributed to the recurring discovery
+commands' own records and results, so quote it as exactly that, an
+estimate), and your `declined` list. Then:
+
+    python3 SCRIPTS/generate.py --work WORK
+
+This assembles `PROPOSED-CLAUDE.md` next to the report — receipts ride in
+HTML comments, which Claude Code strips at load, so they cost the adopter
+nothing. It exits nonzero if the draft breaks the official 200-line target:
+the doctor does not prescribe the disease it diagnoses. **Never copy the
+draft into the repo yourself** — adoption is the user's move.
+
+### B5 — diagnosis, report, card
+
+Proceed to Stages 5 and 6 as usual. Mode B specifics:
+- `chief_complaint`: the absence plus its cost, with evidence ("No memory
+  file exists; N sessions show M recurring rules dictated by hand").
+- **Grade the gap, not the void**: D when the history shows recurring
+  unwritten rules being re-dictated or violated; C when the mined chart is
+  thin. F stays reserved for actively misleading files — absence is not
+  deception.
+- `rule_verdicts` for backtested mined rules use verdict `undocumented`
+  (they cannot be "ignored" — there was no file to ignore).
+- The report renders the Initial chart section from `chart.json` and the
+  card switches to intake stats automatically. Tell the user where
+  `PROPOSED-CLAUDE.md` lives, that every line carries its receipt, and that
+  hook proposals (if any) are review-then-arm.
 
 ## Conduct
 

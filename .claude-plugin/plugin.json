@@ -1,7 +1,7 @@
 {
   "name": "claude-md-doctor",
-  "version": "0.4.4",
-  "description": "Give your CLAUDE.md / AGENTS.md a checkup: size vitals vs official guidance, dead references, drifted claims — plus a backtest of every rule against your own session history showing which rules get followed, ignored, or never used. Doctor-style HTML report with evidence-cited prescriptions. Use it to audit, review, improve, lint, grade, or fix agent instruction files.",
+  "version": "0.5.0",
+  "description": "Give your CLAUDE.md / AGENTS.md a checkup: size vitals vs official guidance, dead references, drifted claims — plus a backtest of every rule against your own session history showing which rules get followed, ignored, or never used. Doctor-style HTML report with evidence-cited prescriptions. No CLAUDE.md yet? It mines your session history and drafts one, every line with receipts. Use it to audit, review, improve, lint, grade, fix, or generate agent instruction files.",
   "author": {
     "name": "Tristan Chen"
   },

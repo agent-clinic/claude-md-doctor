@@ -70,8 +70,10 @@ def hearts_svg(x, y, grade):
     return "".join(out)
 
 
-def fallback_note(grade, verdict_counts, criticals, warns):
+def fallback_note(grade, verdict_counts, criticals, warns, intake_mode=False):
     g = (grade or " ")[0].upper()
+    if intake_mode:
+        return "The chart was in the history all along."
     if verdict_counts.get("ignored"):
         return "The loudest rule was the broken one."
     if g == "A":
@@ -185,24 +187,38 @@ def main():
     backtest = load_json(os.path.join(work, "backtest.json")) or {}
     rulebook = load_json(os.path.join(work, "rulebook.json")) or {}
     diagnosis = load_json(os.path.join(work, "diagnosis.json")) or {}
+    chart = load_json(os.path.join(work, "chart.json")) or {}
 
     grade = diagnosis.get("grade", "—")
     name = "" if args.anonymous else \
         (args.name or os.path.basename(intake.get("repo", "")) or "")
 
-    # aggregate-only stats — never a path, rule text, or repo quote
+    # aggregate-only stats — never a path, rule text, or repo quote.
+    # class strings are model-authored: whitelist them so a stray value
+    # can never ride the legend onto the postable card
+    def norm_class(cls):
+        return cls if cls in ("hook", "linter", "test", "judge") \
+            else "unclassified"
+
     combined = vitals.get("launch_loaded_combined", {})
     rules = rulebook.get("rules", [])
     class_counts, lawable, already = {}, 0, 0
     for r in rules:
         enf = r.get("enforcement") or {}
-        cls = enf.get("class") or "unclassified"
+        cls = norm_class(enf.get("class") or "unclassified")
         class_counts[cls] = class_counts.get(cls, 0) + 1
         if cls in ("hook", "linter", "test"):
             if (enf.get("current_layer") or "prose") == "prose":
                 lawable += 1
             else:
                 already += 1
+    # intake mode: the patient has no memory file — the chart was mined
+    intake_mode = chart.get("mode") == "intake"
+    if not rules and chart.get("rules"):
+        for r in chart["rules"]:
+            cls = norm_class(r.get("class") or "unclassified")
+            class_counts[cls] = class_counts.get(cls, 0) + 1
+
     verdict_counts = {}
     for v in (diagnosis.get("rule_verdicts") or {}).values():
         verdict_counts[v.get("verdict", "?")] = \
@@ -213,23 +229,39 @@ def main():
                  if d.get("severity") == "warn"])
 
     note = diagnosis.get("share_note") or fallback_note(
-        grade, verdict_counts, criticals, warns)
+        grade, verdict_counts, criticals, warns, intake_mode)
 
     stats = []
-    if combined:
+    if intake_mode:
+        idx = load_json(os.path.join(work, "sessions_index.json")) or {}
+        n_sess = len([s for s in idx.get("sessions", []) if s.get("events")])
+        stats.append("no memory file on record · %d session%s examined"
+                     % (n_sess, "" if n_sess == 1 else "s"))
+        stats.append("%d fact%s + %d rule%s mined from history"
+                     % (len(chart.get("facts", [])),
+                        "" if len(chart.get("facts", [])) == 1 else "s",
+                        len(chart.get("rules", [])),
+                        "" if len(chart.get("rules", [])) == 1 else "s"))
+        tax = chart.get("startup_tax") or {}
+        if tax.get("est_tokens"):
+            stats.append("~%s tokens of transcript re-discovering the same "
+                         "facts (est.)" % "{:,}".format(tax["est_tokens"]))
+    elif combined:
         stats.append("%s effective lines · ~%s tokens loaded every session"
                      % ("{:,}".format(combined.get("effective_lines", 0)),
                         "{:,}".format(combined.get("est_tokens", 0))))
-    if rules:
+    if rules and not intake_mode:
         stats.append("%d directives · %d could be laws · %d already are"
                      % (len(rules), lawable, already))
-    sev_order = ("ignored", "abandoned", "mixed", "healthy", "inert", "unmeasured")
+    sev_order = ("ignored", "abandoned", "mixed", "undocumented", "healthy",
+                 "inert", "unmeasured")
     vbits = [("%d %s" % (verdict_counts[k], k)) for k in sev_order
              if verdict_counts.get(k)]
     vbits += [("%d %s" % (n, k)) for k, n in verdict_counts.items()
               if n and k not in sev_order]
     if vbits:
         stats.append(" · ".join(vbits))
+    stats = stats[:3]  # the card's stat block holds three lines above the bar
 
     out_dir = os.path.dirname(work)
     card_path = os.path.join(out_dir, "card.svg")

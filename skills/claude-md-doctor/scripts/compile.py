@@ -118,6 +118,13 @@ def dossier(rule, st):
     return "\n".join(lines)
 
 
+def clip(s, cap=120):
+    """Word-boundary truncation — this text is the armed hook's warning."""
+    if len(s) <= cap:
+        return s
+    return s[:cap].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+
+
 def guard_entry(rule, st):
     scope = rule.get("scope") or {}
     kinds = []
@@ -129,7 +136,7 @@ def guard_entry(rule, st):
     mode = "warn"
     if st and st.get("causes", {}).get("defiance-proven"):
         mode = "block"
-    return {"id": rule["id"], "text": rule.get("text", "")[:100],
+    return {"id": rule["id"], "text": clip(rule.get("text", "")),
             "source": "%s:%s" % ((rule.get("source") or {}).get("file", "?"),
                                  (rule.get("source") or {}).get("line", "?")),
             "kinds": sorted(set(kinds)) or ["bash", "edit"],

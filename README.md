@@ -6,7 +6,9 @@
 
 <p align="center"><b>Give your CLAUDE.md — or AGENTS.md — a checkup.</b><br>
 Vitals, lab work, diagnoses, prescriptions — and a backtest of every rule
-against your own session history.</p>
+against your own session history.<br>
+No CLAUDE.md yet? The doctor mines your sessions and drafts one — every
+line with receipts.</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-2f6f5e" alt="MIT license">
@@ -122,6 +124,39 @@ catches that — and it's free, sitting in your transcript history.
 Run it on your own repo: the rules you'd bet on being followed are rarely the
 ones that are.
 
+## No CLAUDE.md? The doctor writes your chart
+
+Most repos have no memory file at all (18 of the 20 on our own machine).
+But their session transcripts already contain the unwritten rulebook, and
+the same engine that backtests rules can run in reverse — mine the history,
+then validate the checkable candidates against it:
+
+| Signal | Example | Becomes |
+|---|---|---|
+| repeated corrections | "no, use pnpm not npm" typed in 3 sessions | a rule |
+| failed → fixed pairs | `npm test` fails, `pnpm test` works, again | a rule (often a hook) |
+| re-discovery | agent reads `package.json` at every session start | a fact, stated once |
+| permission denials | you rejected `git push` twice | a "never" rule |
+| repeated preambles | the same context paragraph pasted each session | a fact |
+
+Grouped signals survive only with recurrence (≥2 sessions or ≥3
+occurrences; re-discovery needs 3 distinct sessions) and carry recency
+flags — a preference the repo moved past is marked stale for the judge
+pass to decline. Corrections reach the judge ungated (wording varies too
+much to group), deduped and capped, and are judged hardest. Each accepted
+mechanically-checkable rule is then **replayed through the backtest** for
+precise counts. The result is `PROPOSED-CLAUDE.md`: a lean
+draft where every line carries its receipt as an HTML comment (stripped at
+load, so it costs the adopter nothing), hook-class rules arrive as
+review-then-arm guard proposals ("born mechanized"), and the report shows
+the re-discovery tax your sessions have been paying. The draft is held to
+the same 200-line vitals this tool grades everyone else on — the generator
+refuses to prescribe the disease it diagnoses. Nothing is installed and no
+CLAUDE.md is written for you — the draft lands in the exam folder
+(`.claude-md-doctor/`), and adoption is your move. Repos that *do* have a CLAUDE.md get the
+same mining as a **gap analysis**: rules you keep dictating by hand that
+the file never says.
+
 ## FAQ
 
 **Why does Claude ignore my CLAUDE.md?**
@@ -133,6 +168,16 @@ user error: agents violate 57.5% of preference rules even when memory
 retrieves them, and perform about half the steps their own instruction
 files mandate ([docs/RESEARCH.md](docs/RESEARCH.md)). The backtest tells
 you which cause is yours, with the transcript as receipts.
+
+**Can it write my CLAUDE.md for me?**
+Yes — from evidence, not from templates. If your repo has no memory file,
+the exam switches to intake mode: it mines your local session transcripts
+for recurring corrections, failed→fixed commands, re-discovered facts, and
+denials, replays the checkable candidates against that same history, and
+drafts `PROPOSED-CLAUDE.md` with a receipt on every line. Unlike `/init`,
+which reads your file tree, this reads your *behavior* — it only proposes
+rules you have demonstrably needed, with recurrence gates and staleness
+flags to keep one-off taste out.
 
 **How do I audit my CLAUDE.md or AGENTS.md?**
 Install the skill (Quickstart above), then ask in any session: *"give my
@@ -172,7 +217,9 @@ primary-verified sources.
 ## Status
 
 The full exam works end to end: static checks + session backtest + cause
-triage + enforcement compilation + share card/badge + verified report.
+triage + enforcement compilation + generative intake mode (no CLAUDE.md →
+mine sessions → drafted chart with receipts) + share card/badge + verified
+report.
 Tested (`python3 -m unittest discover -s tests`), calibrated
 against real-world gold-standard files (`python3 fixtures/fetch.py`), and
 dogfooded on a real repo — including a clean-context validation run, where a
