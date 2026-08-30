@@ -180,6 +180,18 @@ positive gets fixed in `rulebook.json` and the engine re-run — this loop is
 cheap and it is the whole reason the results can be trusted. Only when every
 sampled fire is confirmed, set `"verified": true` in `backtest.json`
 (edit the file) — the report shows a "provisional" banner otherwise.
+
+**Mention is not use.** The most common false positive is a session that
+*talks about* a rule rather than breaking it: documenting the hazard,
+grepping for offenders, writing the rule itself, quoting it in a commit
+message or a retraction. A regex cannot tell discussion from violation, and
+these land as `defiance-proven` — the most severe cause — because the rule
+text is echoed right there. When a repo's own docs quote its rules, expect
+this and check the excerpt for whether the event *performed* the banned
+action or merely referred to it. Repos that document their own conventions
+generate this heavily; drop those fires and tighten the matcher (anchor on
+the action, exclude edits to the memory files and docs via
+`scope.exclude_paths`).
 Then record per-rule verdicts in `diagnosis.json` under `rule_verdicts`:
 
 ```json

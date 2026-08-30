@@ -593,6 +593,86 @@ class TestGenerate(ToyRepo):
             self.assertNotIn(leak, card)
 
 
+class TestSpacedPaths(unittest.TestCase):
+    """Repo paths containing a space (common on macOS/Windows).
+
+    Reported from the wild: all three stages that need real data failed
+    silently while vitals kept working, so the tool reported success.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.home = os.path.join(self.tmp.name, "home")
+        self.projects = os.path.join(self.home, ".claude", "projects")
+        os.makedirs(self.projects)
+        self._old_home = os.environ.get("HOME")
+        os.environ["HOME"] = self.home
+        import intake
+        self.intake = intake
+
+    def tearDown(self):
+        if self._old_home is not None:
+            os.environ["HOME"] = self._old_home
+        self.tmp.cleanup()
+
+    def _session_dir(self, name, cwd):
+        d = os.path.join(self.projects, name)
+        os.makedirs(d)
+        with open(os.path.join(d, "s1.jsonl"), "w") as f:
+            f.write(json.dumps({"type": "user", "cwd": cwd}) + "\n")
+        return d
+
+    def test_slug_lookup_handles_spaces(self):
+        repo = "/tmp/me/01 Cowork"
+        want = self._session_dir("-tmp-me-01-Cowork", repo)
+        got = self.intake.sessions_dir_for(repo)
+        self.assertEqual(got["dir"], want)          # was None -> backtest skipped
+        self.assertEqual(got["session_files"], 1)
+
+    def test_recorded_cwd_fallback_when_slug_is_unguessable(self):
+        repo = "/tmp/me/wild"
+        want = self._session_dir("totally-unexpected-name", repo)
+        got = self.intake.sessions_dir_for(repo)
+        self.assertEqual(got["dir"], want)
+        self.assertEqual(got["matched_by"], "recorded-cwd")
+
+    def test_no_history_still_reports_none(self):
+        self.assertIsNone(self.intake.sessions_dir_for("/tmp/me/absent")["dir"])
+
+
+class TestSpacedRefs(ToyRepo):
+    def test_backticked_path_with_space_is_one_reference(self):
+        self._w("02 Private/Life/The Backyard Chickens.md", "hi\n")
+        self._w("CLAUDE.md", "See `02 Private/Life/The Backyard Chickens.md`.\n")
+        run("intake.py", "--repo", self.repo, "--work", self.work)
+        run("vitals.py", "--work", self.work)
+        run("refcheck.py", "--work", self.work)
+        refs = jload(self.work, "refcheck.json")["references"]
+        by_ref = {r["ref"]: r["status"] for r in refs}
+        self.assertEqual(by_ref.get("02 Private/Life/The Backyard Chickens.md"), "ok")
+        # the fragments must not appear as their own dead references
+        self.assertNotIn("Private/Life/The", by_ref)
+        self.assertNotIn("Chickens.md", by_ref)
+
+
+class TestMineGroupingKeys(unittest.TestCase):
+    def test_timeline_labels_skip_cd_navigation(self):
+        import backtest
+        self.assertEqual(backtest.command_word('cd "/home/me/my repo" && pnpm test'),
+                         "pnpm")                     # was "cd" for every command
+        self.assertEqual(backtest.command_word("cd /only"), "cd")
+        self.assertEqual(backtest.command_word("FOO=1 npm ci"), "npm")
+
+    def test_cd_prefix_does_not_collapse_every_command(self):
+        import mine
+        self.assertEqual(mine.head_key('cd "/home/me/my repo" && node tools/board.js'),
+                         "node board.js")           # was "my", then "cd"
+        self.assertEqual(mine.head_key("cd /x && pnpm test"), "pnpm test")
+        self.assertEqual(mine.head_key("cat package.json"), "cat package.json")
+        self.assertNotEqual(mine.head_key("cd /a && git log"),
+                            mine.head_key("cd /a && npm ci"))
+
+
 class TestVersionSync(unittest.TestCase):
     def test_report_version_matches_plugin_manifest(self):
         # The report footer stamps report.VERSION; the marketplace ships

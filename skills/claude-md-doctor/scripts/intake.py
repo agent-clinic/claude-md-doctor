@@ -125,13 +125,62 @@ def detect_pointer(rec):
                        pointer_targets=[target])
 
 
+CWD_RE = re.compile(r'"cwd"\s*:\s*"([^"]+)"')
+
+
+def _recorded_cwd(d, files):
+    """The working directory a transcript recorded for itself."""
+    for fn in files[:2]:
+        try:
+            with open(os.path.join(d, fn), errors="replace") as f:
+                for _ in range(40):
+                    line = f.readline()
+                    if not line:
+                        break
+                    m = CWD_RE.search(line)
+                    if m:
+                        return m.group(1)
+        except OSError:
+            continue
+    return None
+
+
 def sessions_dir_for(repo):
+    """Locate this repo's transcript directory.
+
+    Claude Code slugifies the path (/, . and spaces all become -), so try the
+    slug first. When that misses — a space, a non-ASCII character, any future
+    change to the scheme — fall back to the transcripts themselves, which
+    record the cwd they ran in. Guessing wrong here is expensive: the exam
+    silently skips the backtest and the report reads as "no session history"
+    when the history was sitting right there.
+    """
     base = os.path.expanduser("~/.claude/projects")
-    for cand in (re.sub(r"[/.]", "-", repo), repo.replace("/", "-")):
+    if not os.path.isdir(base):
+        return {"dir": None, "session_files": 0}
+    # A session may have run under a symlinked spelling of the same repo
+    # (/tmp vs /private/tmp on macOS), so try both when slugifying.
+    real = os.path.realpath(repo)
+    cands = []
+    for form in (repo, real):
+        cands += [re.sub(r"[/. ]", "-", form), re.sub(r"[/.]", "-", form),
+                  form.replace("/", "-")]
+    for cand in cands:
         d = os.path.join(base, cand)
         if os.path.isdir(d):
             n = len([f for f in os.listdir(d) if f.endswith(".jsonl")])
-            return {"dir": d, "session_files": n}
+            return {"dir": d, "session_files": n, "matched_by": "slug"}
+    for name in sorted(os.listdir(base)):
+        d = os.path.join(base, name)
+        if not os.path.isdir(d):
+            continue
+        files = [f for f in os.listdir(d) if f.endswith(".jsonl")]
+        if not files:
+            continue
+        cwd = _recorded_cwd(d, files)
+        if cwd and os.path.realpath(cwd) == real:
+            return {"dir": d, "session_files": len(files),
+                    "matched_by": "recorded-cwd"}
     return {"dir": None, "session_files": 0}
 
 

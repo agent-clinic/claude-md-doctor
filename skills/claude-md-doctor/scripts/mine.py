@@ -36,6 +36,7 @@ Writes: <work>/candidates.json
 import argparse
 import os
 import re
+import shlex
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -140,9 +141,23 @@ def similar(a, b):
 def head_key(cmd):
     """First two meaningful words of a command — the rediscovery grouping key
     (`cat package.json`, `pnpm install`, `git log`)."""
-    seg = re.split(r"&&|\|\||;|\|", cmd or "")[0]
-    seg = ENV_PREFIX_RE.sub("", seg.strip())
-    words = [w.strip("'\"") for w in seg.split()]
+    words = []
+    # `cd <dir> && <real work>` is navigation, not the thing being rediscovered:
+    # key on the first segment that does actual work, else fall back to the cd.
+    for seg in re.split(r"&&|\|\||;|\|", cmd or ""):
+        seg = ENV_PREFIX_RE.sub("", seg.strip())
+        if not seg:
+            continue
+        try:
+            w = shlex.split(seg)          # quote-aware: `cd "/my repo" && ...`
+        except ValueError:                # unbalanced quotes — fall back
+            w = [x.strip("'\"") for x in seg.split()]
+        if not w or not w[0]:
+            continue
+        words = words or w
+        if os.path.basename(w[0]) not in ("cd", "pushd", "popd"):
+            words = w
+            break
     if not words or not words[0]:
         return "?"
     head = os.path.basename(words[0])[:24]

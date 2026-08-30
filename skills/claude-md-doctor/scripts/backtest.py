@@ -53,6 +53,7 @@ import argparse
 import fnmatch
 import os
 import re
+import shlex
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -184,12 +185,22 @@ ENV_PREFIX_RE = re.compile(r"^(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S
 def command_word(cmd):
     """First meaningful word of a shell command: split compound commands on
     && / ; / |, strip env-assignment prefixes, take the first real word."""
+    fallback = None
     for seg in re.split(r"&&|\|\||;|\|", cmd or ""):
         seg = ENV_PREFIX_RE.sub("", seg.strip())
-        words = seg.split()
-        if words and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", words[0]):
-            return os.path.basename(words[0])[:24]
-    return "?"
+        try:
+            words = shlex.split(seg)      # quote-aware: `cd "/my repo" && ...`
+        except ValueError:                # unbalanced quotes — fall back
+            words = seg.split()
+        if not words or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", words[0]):
+            continue
+        word = os.path.basename(words[0])[:24]
+        # `cd <dir> &&` is navigation; label the segment that does the work.
+        if word in ("cd", "pushd", "popd"):
+            fallback = fallback or word
+            continue
+        return word
+    return fallback or "?"
 
 
 def build_timeline(tool_seq, last_mut, last_mut_turn, mutations):

@@ -40,8 +40,10 @@ YARN_BUILTINS = PNPM_BUILTINS | {"workspaces", "workspace", "dedupe", "info"}
 API_PATH_RE = re.compile(r"^/(v\d+|api|graphql)(/|$)")
 
 
-def looks_pathish(token):
-    if URL_RE.search(token) or " " in token or token.startswith("@"):
+def looks_pathish(token, allow_space=False):
+    if URL_RE.search(token) or token.startswith("@"):
+        return False
+    if " " in token and not allow_space:
         return False
     if API_PATH_RE.match(token):
         return False  # /v1/... style API endpoint, not a filesystem path
@@ -50,7 +52,8 @@ def looks_pathish(token):
     if not re.search(r"[A-Za-z0-9]", token):
         return False  # pure punctuation like /** or --- is never a path
     if "/" in token:
-        return bool(re.match(r"^[~./A-Za-z0-9_*\[\]-][A-Za-z0-9_.*/\[\]~-]*$", token))
+        tail = r"[A-Za-z0-9_.*/\[\] ~-]*$" if allow_space else r"[A-Za-z0-9_.*/\[\]~-]*$"
+        return bool(re.match(r"^[~./A-Za-z0-9_*\[\]-]" + tail, token))
     return token.endswith(PATH_EXTS) and len(token) > len(".x")
 
 
@@ -167,9 +170,21 @@ def main():
                     commands.append({"file": rec["path"], "line": lineno,
                                      "command": "%s %s" % (m.group(1), target),
                                      "status": status, "detail": detail})
-                for part in re.split(r"[\s,]+", token):
+                parts = re.split(r"[\s,]+", token)
+                whole = token.strip("().,;:\'\"")
+                spaced = False
+                # A backticked span can be ONE path that contains spaces
+                # ("02 Private/Life/The Backyard Chickens.md"). Splitting that
+                # invents dead references out of its fragments, so try the span
+                # whole first and only fall back to the pieces.
+                if " " in whole and "/" in whole \
+                        and looks_pathish(whole, allow_space=True) \
+                        and (whole.endswith(PATH_EXTS)
+                             or os.path.exists(os.path.join(repo, whole))):
+                    parts, spaced = [whole], True
+                for part in parts:
                     part = part.strip("().,;:'\"")
-                    if not looks_pathish(part):
+                    if not looks_pathish(part, allow_space=spaced):
                         continue
                     key = ("path", part)
                     if key in seen:
