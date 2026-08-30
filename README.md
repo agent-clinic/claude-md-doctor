@@ -193,11 +193,40 @@ in tokens per session. Length itself is the weakest signal, though; the
 strong causal evidence is about pruning content that doesn't change
 behavior.
 
-**How is this different from `/doctor` or the official claude-md-management plugin?**
-Those score or trim the *file*, statically. This joins the file to your
-*behavior*: it replays every rule against your real session transcripts
-and shows per-rule compliance with cause-of-failure triage. Linters check
-the file; analytics grade your sessions; the backtest is the join.
+**How is this different from `/insights`, `/doctor`, or the official
+claude-md-management plugin?**
+They all start from somewhere else. `/doctor` trims content from the file
+that Claude could derive from your codebase. `claude-md-improver` grades
+the file against your codebase and edits it — its inputs are your
+CLAUDE.md files and your repo, never your sessions. `/insights` *does*
+read your sessions, and it will suggest CLAUDE.md sections to add, but it
+never opens the file you already have.
+
+The difference is direction. Those answer *"what should you write?"* This
+one answers *"is what you already wrote doing anything?"* — it takes the
+rules that are in your file today, replays each one against your
+transcripts, and reports per-rule compliance with counts, receipts, and a
+cause when it failed.
+
+A real example from running both: `/insights` suggested adding a rule to
+default to staging and never write to production. That repo's CLAUDE.md
+already had a section explaining staging versus production. The content
+was loaded in every session and the production write happened anyway.
+`/insights` cannot see that, because it does not read the file. This tool
+exists for that gap. They compose well — one proposes rules, the other
+tells you which ones stick.
+
+**Does it count violations from before I added a rule?**
+Not when the rule can be dated. Each rule carries an `introduced` date
+taken from the memory file's git history, and sessions that ended before
+that date are not counted as opportunities for it, so a rule you added
+last week is only scored from last week onward. Two limits worth knowing:
+the cutoff is currently per session rather than per event, so a session
+that straddles the moment you added the rule still counts in full; and
+when git cannot date a rule cleanly it stays undated and is scored against
+the whole window. Every rule shows how many opportunities its verdict
+rests on, so a verdict built on two sessions does not look like one built
+on fifty.
 
 **Does my session data leave my machine?**
 No. Everything runs locally, stdlib Python only, no telemetry. The share
