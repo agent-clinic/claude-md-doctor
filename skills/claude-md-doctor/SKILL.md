@@ -12,8 +12,10 @@ Do not re-derive what a script already measured, and do not skip a stage — the
 report verifies the work-state manifest and will disclose skipped stages.
 
 Definitions used below:
-- `SKILL_DIR` = the directory containing this SKILL.md.
-- `SCRIPTS` = `SKILL_DIR/scripts`.
+- `SCRIPTS` = `${CLAUDE_SKILL_DIR}/scripts` — Claude Code substitutes
+  `${CLAUDE_SKILL_DIR}` with this skill's own directory at run time, so the
+  scripts resolve no matter the working directory or how the skill was
+  installed. Use it literally; do not try to locate the skill yourself.
 - `REPO` = the repository to examine (the argument if one was given, else the
   current working directory).
 - `WORK` = `REPO/.claude-md-doctor/work` (scripts default to this; pass
